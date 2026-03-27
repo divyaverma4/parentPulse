@@ -8,7 +8,7 @@ $response = Invoke-RestMethod -Uri "http://localhost:3000/api/chat/ask" `
   -ContentType "application/json" `
   -Body '{"question":"What is my average grade in math?","studentUserId":1}'
 
-$response | ConvertTo-Json -Depth 10
+$response | ConvertTo-Json 
 
 ### student 2
 $response = Invoke-RestMethod -Uri "http://localhost:3000/api/chat/ask" `
@@ -16,4 +16,4 @@ $response = Invoke-RestMethod -Uri "http://localhost:3000/api/chat/ask" `
   -ContentType "application/json" `
   -Body '{"question":"What is my average grade in math?","studentUserId":4}'
 
-$response | ConvertTo-Json -Depth 10
+$response | ConvertTo-Json 
