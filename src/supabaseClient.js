@@ -15,9 +15,10 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 /**
  * Get student's current grades and submission summary
  */
-export async function getStudentGradesSummary(studentUserId) {
+export async function getStudentGradesSummary(studentUserId, courseId = null) {
   try {
-    const { data, error } = await supabase
+    console.log('[getStudentGradesSummary] Starting query for studentUserId:', studentUserId, 'courseId:', courseId);
+    let query = supabase
       .from('submissions')
       .select(`
         score,
@@ -32,6 +33,16 @@ export async function getStudentGradesSummary(studentUserId) {
         student_user_id
       `)
       .eq('student_user_id', studentUserId);
+
+    if (courseId) {
+      query = query.eq('assignments.course_id', courseId);
+    }
+
+    const { data, error } = await query;
+    console.log('[getStudentGradesSummary] Query completed');
+    console.log('[getStudentGradesSummary] Error:', error);
+    console.log('[getStudentGradesSummary] Data length:', data?.length || 0);
+    console.log('[getStudentGradesSummary] Raw data:', JSON.stringify(data, null, 2));
     
     if (error) throw error;
     return data || [];
@@ -218,7 +229,10 @@ export async function queryContextForQuestion(question, studentUserId, courseId 
     let context = {};
 
     // Help determine what data to fetch based on question keywords
-    if (questionLower.includes('grade') || questionLower.includes('score')) {
+    // Enhanced grade detection for various phrasings
+    const gradeKeywords = ['grade', 'score', 'average', 'gpa', 'performance', 'overall', 'mean', 'standing'];
+    const hasGradeQuery = gradeKeywords.some(keyword => questionLower.includes(keyword));
+    if (hasGradeQuery) {
       context.grades = await getStudentGradesSummary(studentUserId);
     }
     
@@ -257,8 +271,186 @@ export async function queryContextForQuestion(question, studentUserId, courseId 
 }
 
 /**
- * Format database context into a readable string for OpenAI
+ * Convert letter grade to numeric GPA value
  */
+export function convertGradeToGPA(grade) {
+  if (!grade) return null;
+
+  const gradeStr = String(grade).trim();
+
+  // Handle percentage grades (e.g., "85.00%", "92%")
+  if (gradeStr.includes('%')) {
+    const percentMatch = gradeStr.match(/(\d+\.?\d*)/);
+    if (percentMatch) {
+      const percent = parseFloat(percentMatch[1]);
+      console.log(`[convertGradeToGPA] Converting percentage "${grade}" to GPA`);
+      
+      if (percent >= 97) return 4.0;
+      if (percent >= 93) return 4.0;
+      if (percent >= 90) return 3.7;
+      if (percent >= 87) return 3.3;
+      if (percent >= 83) return 3.0;
+      if (percent >= 80) return 2.7;
+      if (percent >= 77) return 2.3;
+      if (percent >= 73) return 2.0;
+      if (percent >= 70) return 1.7;
+      if (percent >= 67) return 1.3;
+      if (percent >= 63) return 1.0;
+      if (percent >= 60) return 0.7;
+      return 0.0;
+    }
+  }
+
+  // Handle letter grades (e.g., "A", "B+", "A-")
+  const gradeMap = {
+    'A+': 4.0, 'A': 4.0, 'A-': 3.7,
+    'B+': 3.3, 'B': 3.0, 'B-': 2.7,
+    'C+': 2.3, 'C': 2.0, 'C-': 1.7,
+    'D+': 1.3, 'D': 1.0, 'D-': 0.7,
+    'F': 0.0
+  };
+
+  console.log(`[convertGradeToGPA] Converting letter grade "${grade}" to GPA`);
+  return gradeMap[gradeStr.toUpperCase()] || null;
+}
+
+/**
+ * Convert numeric score into GPA value (if letter not available)
+ */
+export function convertScoreToGPA(score, pointsPossible = null) {
+  if (score == null) return null;
+
+  let percent;
+  if (pointsPossible && Number(pointsPossible) > 0) {
+    percent = (Number(score) / Number(pointsPossible)) * 100;
+  } else {
+    percent = Number(score);
+  }
+
+  if (Number.isNaN(percent)) return null;
+
+  if (percent >= 97) return 4.0;
+  if (percent >= 93) return 4.0;
+  if (percent >= 90) return 3.7;
+  if (percent >= 87) return 3.3;
+  if (percent >= 83) return 3.0;
+  if (percent >= 80) return 2.7;
+  if (percent >= 77) return 2.3;
+  if (percent >= 73) return 2.0;
+  if (percent >= 70) return 1.7;
+  if (percent >= 67) return 1.3;
+  if (percent >= 63) return 1.0;
+  if (percent >= 60) return 0.7;
+  return 0.0;
+}
+
+/**
+ * Calculate average grade from letter grades or numeric score fallback.
+ */
+export function calculateAverageGrade(grades) {
+  console.log('\n[calculateAverageGrade] ========== START ==========');
+  console.log('[calculateAverageGrade] Input: grades.length =', grades.length);
+  
+  // Log why each grade is being filtered
+  grades.forEach((g, idx) => {
+    console.log(`[calculateAverageGrade] Record ${idx}: excused=${g.excused}, missing=${g.missing}`);
+    if (g.excused || g.missing) {
+      console.log(`[calculateAverageGrade]   -> FILTERED OUT (excused or missing)`);
+    }
+  });
+  
+  const filtered = grades.filter(g => !(g.excused || g.missing));
+  console.log('[calculateAverageGrade] After excused/missing filter:', filtered.length, 'remaining');
+  
+  const numericGrades = filtered
+    .map((g, idx) => {
+      const hasGrade = g.grade && g.grade.trim() !== '';
+      const hasScore = g.score != null;
+      const hasAssignments = !!g.assignments;
+      console.log(`[calculateAverageGrade] Processing ${idx}: grade="${g.grade}" (has=${hasGrade}), score=${g.score} (has=${hasScore}), assignments=${hasAssignments}`);
+      
+      if (hasGrade) {
+        const gpa = convertGradeToGPA(g.grade);
+        console.log(`[calculateAverageGrade]   -> Using letter grade: "${g.grade}" -> GPA ${gpa}`);
+        return gpa;
+      }
+
+      if (hasScore) {
+        const pointsPossible = g.assignments?.points_possible || null;
+        const gpa = convertScoreToGPA(g.score, pointsPossible);
+        console.log(`[calculateAverageGrade]   -> Using score fallback: ${g.score}/${pointsPossible} -> GPA ${gpa}`);;
+        return gpa;
+      }
+
+      console.log(`[calculateAverageGrade]   -> FILTERED OUT (no grade and no score)`);
+      return null;
+    })
+    .filter(g => g !== null);
+
+  console.log('[calculateAverageGrade] After mapping/filtering: numericGrades.length =', numericGrades.length);
+  console.log('[calculateAverageGrade] numericGrades =', numericGrades);
+  
+  if (numericGrades.length === 0) {
+    console.log('[calculateAverageGrade] NO VALID GRADES FOUND - returning null');
+    console.log('[calculateAverageGrade] ========== END (RETURNED NULL) ==========\n');
+    return null;
+  }
+
+  const avg = numericGrades.reduce((a, b) => a + b, 0) / numericGrades.length;
+  const result = avg.toFixed(2);
+  console.log('[calculateAverageGrade] Average calculated:', result);
+  console.log('[calculateAverageGrade] ========== END (SUCCESS) ==========\n');
+  return result;
+}
+
+/**
+ * Calculate overall percentage grade from all assignments
+ */
+export function calculateOverallPercentage(grades) {
+  console.log('[calculateOverallPercentage] Starting with', grades.length, 'grades');
+  
+  const filtered = grades.filter(g => !(g.excused || g.missing));
+  console.log('[calculateOverallPercentage] After filtering excused/missing:', filtered.length, 'remaining');
+  
+  const percentages = filtered
+    .map((g, idx) => {
+      // If grade is already a percentage string like "85.00%"
+      if (g.grade && String(g.grade).includes('%')) {
+        const match = String(g.grade).match(/(\d+\.?\d*)/);
+        if (match) {
+          const percent = parseFloat(match[1]);
+          console.log(`[calculateOverallPercentage] Idx ${idx}: Extracted percentage from "${g.grade}" = ${percent}%`);
+          return percent;
+        }
+      }
+      
+      // Fall back to calculating from score
+      if (g.score != null && g.assignments?.points_possible != null) {
+        const pointsPossible = Number(g.assignments.points_possible);
+        if (pointsPossible > 0) {
+          const percent = (Number(g.score) / pointsPossible) * 100;
+          console.log(`[calculateOverallPercentage] Idx ${idx}: Calculated from score ${g.score}/${pointsPossible} = ${percent.toFixed(2)}%`);
+          return percent;
+        }
+      }
+      
+      console.log(`[calculateOverallPercentage] Idx ${idx}: No percentage available`);
+      return null;
+    })
+    .filter(p => p !== null);
+  
+  console.log('[calculateOverallPercentage] Valid percentages:', percentages);
+  
+  if (percentages.length === 0) {
+    console.log('[calculateOverallPercentage] NO VALID PERCENTAGES - returning null');
+    return null;
+  }
+  
+  const avg = percentages.reduce((a, b) => a + b, 0) / percentages.length;
+  const result = avg.toFixed(2);
+  console.log('[calculateOverallPercentage] Overall percentage calculated:', result);
+  return result;
+}
 export function formatContextForOpenAI(contextData) {
   let contextString = 'Student Database Context:\n\n';
 
@@ -279,17 +471,25 @@ export function formatContextForOpenAI(contextData) {
 
   if (contextData.grades && contextData.grades.length > 0) {
     contextString += 'Grade Summary:\n';
-    const scores = contextData.grades
-      .filter(g => g.score !== null)
-      .map(g => parseFloat(g.score));
-    if (scores.length > 0) {
-      const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
-      const highest = Math.max(...scores).toFixed(2);
-      const lowest = Math.min(...scores).toFixed(2);
-      contextString += `- Average Score: ${avg}%\n`;
-      contextString += `- Highest: ${highest}%\n`;
-      contextString += `- Lowest: ${lowest}%\n`;
+
+    // Calculate average from letter grades
+    const avgGrade = calculateAverageGrade(contextData.grades);
+    if (avgGrade !== null) {
+      contextString += `- Average Grade (GPA): ${avgGrade}\n`;
     }
+
+    // Show individual grades
+    const validGrades = contextData.grades.filter(g => g.grade && g.grade.trim() !== '');
+    if (validGrades.length > 0) {
+      contextString += `- Total Graded Assignments: ${validGrades.length}\n`;
+      contextString += 'Recent Grades:\n';
+      validGrades.slice(0, 5).forEach(g => {
+        if (g.assignments) {
+          contextString += `  - ${g.assignments.name}: ${g.grade} (${g.score || 'N/A'}%)\n`;
+        }
+      });
+    }
+
     const excused = contextData.grades.filter(g => g.excused).length;
     if (excused > 0) {
       contextString += `- Excused Assignments: ${excused}\n`;

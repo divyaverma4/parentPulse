@@ -14,18 +14,64 @@ export const openai = new OpenAI({
 });
 
 /**
+ * Use OpenAI to classify if a question is asking about grades/GPA
+ */
+export async function classifyQuestionIntent(question) {
+  try {
+    const classificationPrompt = `Determine if the following question is asking about the student's grades, GPA, average grade, or overall academic performance. 
+    
+Respond with ONLY "grade" if the question is about grades/GPA, or "other" if it's about something else.
+Do not include any other text.
+
+Question: "${question}"
+
+Response:`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'user',
+          content: classificationPrompt,
+        },
+      ],
+      max_tokens: 10,
+      temperature: 0.0, // deterministic
+    });
+
+    const intent = response.choices[0]?.message?.content?.trim().toLowerCase();
+    console.log(`[classifyQuestionIntent] Question: "${question}" -> Intent: ${intent}`);
+    return intent === 'grade';
+  } catch (error) {
+    console.error('Error classifying question intent:', error);
+    // Fall back to false if classification fails
+    return false;
+  }
+}
+
+/**
  * Generate a response from OpenAI based on a question
  */
 export async function generateResponse(question, context = '') {
   try {
+    const systemPrompt = `You are a helpful chatbot that answers questions about student grades based on provided context.
+
+When a user asks about their "average grade", "GPA", "overall grade", or similar questions about grade averages, respond with a special format:
+[API_CALL:AVERAGE_GRADE] followed by your normal response.
+
+For example:
+[API_CALL:AVERAGE_GRADE] Based on your current grades, your average GPA is calculated as follows...
+
+For all other questions, provide a normal response based on the context provided. Be concise and accurate.`;
+
     const messages = [
       {
         role: 'system',
-        content: 'You are a helpful chatbot that answers questions based on provided context. Be concise and accurate in your responses.',
+        content: systemPrompt,
       },
       {
         role: 'user',
-        content: context 
+        content: context
           ? `Context: ${context}\n\nQuestion: ${question}`
           : question,
       },
