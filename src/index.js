@@ -12,6 +12,9 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
+// Serve static files from public directory
+app.use(express.static('public'));
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -20,14 +23,19 @@ app.get('/api/health', (req, res) => {
 // Chat API routes
 app.use('/api/chat', chatRoutes);
 
-// Root endpoint
+// Root endpoint - serve the frontend
 app.get('/', (req, res) => {
+  res.sendFile('index.html', { root: 'public' });
+});
+
+// API root endpoint
+app.get('/api', (req, res) => {
   res.json({
     message: 'Welcome to the Chatbot API',
     endpoints: {
       health: 'GET /api/health',
       ask: 'POST /api/chat/ask - Ask a question',
-      random: 'GET /api/chat/random - Get random question with answer',
+      insights: 'GET /api/chat/insights/:studentUserId - Get student insights',
       stream: 'POST /api/chat/stream - Stream AI response',
     },
   });
