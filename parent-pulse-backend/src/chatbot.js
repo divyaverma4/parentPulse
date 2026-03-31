@@ -99,6 +99,7 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
       return {
         question: userQuestion,
         response: `Your average grade (GPA) is ${averageData.averageGrade}, which corresponds to a letter grade of ${averageData.letterGrade}. Your overall percentage grade is ${averageData.overallPercentage}%. This is based on ${averageData.gradedAssignments} graded assignments out of ${averageData.totalAssignments} total assignments.`,
+        overallPercentage: averageData.overallPercentage,
         context: averageData,
         allGrades: averageData.allGrades,
         dataUsed: ['grades'],

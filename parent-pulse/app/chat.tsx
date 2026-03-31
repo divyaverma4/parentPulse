@@ -1,8 +1,7 @@
+// File: `app/chat.tsx` (TypeScript / React Native)
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
-  Image,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -29,12 +28,16 @@ export default function ChatScreen() {
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
 
-  const apiBaseUrl =
-    // prefer an environment/manifest value, fallback to origin placeholder
-    (Constants.manifest?.extra as any)?.apiBaseUrl || 'exp://100.70.56.141:8081 ';
+  // prefer manifest extra value; fallback based on platform (Android emulator, iOS simulator)
+  const expoExtra = (Constants.manifest?.extra as any) || {};
+  const provided = expoExtra.apiBaseUrl;
+  const defaultHost =
+    Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+  // If testing on a physical device, set `extra.apiBaseUrl` in `app.json` to "http://YOUR_MACHINE_IP:3000"
+  const apiBaseUrl = provided || defaultHost;
 
   useEffect(() => {
-    // focus behavior on mobile can be handled by autoFocus on TextInput if needed
+    // no-op
   }, []);
 
   const addMessage = (text: string, sender: Message['sender']) => {
@@ -71,8 +74,15 @@ export default function ChatScreen() {
     setSending(true);
     setTyping(true);
 
+    const endpoint = `${apiBaseUrl}/api/chat/ask`;
+    console.log('[chat] POST ->', endpoint);
+
+    const controller = new AbortController();
+    const timeoutMs = 15000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
-      const res = await fetch(`${apiBaseUrl}/api/chat/ask`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -80,19 +90,44 @@ export default function ChatScreen() {
           studentUserId: parseInt(studentId, 10),
           courseId: null,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!res.ok) {
-        throw new Error(`API request failed: ${res.status}`);
+        // try to read JSON error first, fallback to text
+        const bodyText = await res.text().catch(() => '');
+        let serverMessage: string | null = null;
+        try {
+          const parsed = JSON.parse(bodyText);
+          serverMessage = parsed?.error || parsed?.message || JSON.stringify(parsed);
+        } catch {
+          serverMessage = bodyText;
+        }
+        throw new Error(serverMessage || `API error ${res.status}`);
       }
 
       const data = await res.json();
-      const answer = data.answer || data.message || "I couldn't generate a response.";
-      setTyping(false);
+
+      // Always show the full API response from the chatbot
+      const answer = (data.answer || data.message || data.response) ?? "I couldn't generate a response.";
       addMessage(answer, 'bot');
-    } catch (err) {
+
       setTyping(false);
-      showError('Sorry, I encountered an error. Please try again.');
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      setTyping(false);
+
+      // More informative error shown to user
+      if (err?.name === 'AbortError') {
+        showError('Request timed out. Try again.');
+      } else if ((err?.message || '').includes('Network request failed')) {
+        showError('Network request failed — check that the backend is running and `apiBaseUrl` is correct.');
+      } else {
+        showError(err?.message ?? 'Sorry, I encountered an error. Please try again.');
+      }
+
       console.error('Chat API error:', err);
     } finally {
       setSending(false);
@@ -172,8 +207,8 @@ export default function ChatScreen() {
             multiline
             editable={!sending}
             onSubmitEditing={() => {
-              // only send on single-line submit
-              if (!Platform.OS || Platform.OS === 'web') return;
+              // send on native submit, not on web
+              if (Platform.OS === 'web') return;
               sendMessage();
             }}
           />
@@ -194,7 +229,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: {
     flex: 1,
-    backgroundColor: 'linear-gradient(135deg,#667eea,#764ba2)', // RN doesn't support CSS gradients; background image can be used if desired
     backgroundColor: '#f6f7fb',
   },
   header: {
@@ -271,3 +305,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffecec',
   },
 });
+

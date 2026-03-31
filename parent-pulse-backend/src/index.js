@@ -15,6 +15,11 @@ app.use(cors());
 // Serve static files from public directory
 app.use(express.static('public'));
 
+// Favicon route - prevent 404 errors
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
