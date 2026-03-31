@@ -1,3 +1,4 @@
+// File: `src/routes/chat.js` (Node / Express router)
 import express from 'express';
 import { askQuestion, getStudentInsights } from '../chatbot.js';
 
@@ -5,6 +6,8 @@ const router = express.Router();
 
 /**
  * POST /api/chat/ask
+ * Client expects this exact path, so router paths here are appended to the mount path.
+ * If this router is mounted with app.use('/api/chat', router) then the full path is /api/chat/ask
  */
 router.post('/ask', async (req, res) => {
   try {
@@ -24,7 +27,7 @@ router.post('/ask', async (req, res) => {
     console.error('Error in /ask endpoint:', error);
     res.status(500).json({
       error: 'Failed to process question',
-      message: error.message,
+      message: error?.message || 'Internal server error',
     });
   }
 });
@@ -47,7 +50,7 @@ router.get('/insights/:studentUserId', async (req, res) => {
     console.error('Error in /insights endpoint:', error);
     res.status(500).json({
       error: 'Failed to fetch insights',
-      message: error.message,
+      message: error?.message || 'Internal server error',
     });
   }
 });
@@ -88,12 +91,17 @@ router.post('/stream', async (req, res) => {
     res.end();
   } catch (error) {
     console.error('Error in /stream endpoint:', error);
-    res.status(500).json({
-      error: 'Failed to stream response',
-      message: error.message,
-    });
+    // Can't send JSON after streaming headers; if an error happens early, try JSON; otherwise log and end
+    try {
+      res.status(500).json({
+        error: 'Failed to stream response',
+        message: error?.message || 'Internal server error',
+      });
+    } catch (e) {
+      res.end();
+    }
   }
-});   // ✅ THIS WAS MISSING
+});
 
 /**
  * GET /api/chat/average/:studentUserId
@@ -102,17 +110,17 @@ router.get('/average/:studentUserId', async (req, res) => {
   try {
     const { studentUserId } = req.params;
     const { courseId } = req.query;
-    
+
     console.log('[/average endpoint] Request for studentUserId:', studentUserId, 'courseId:', courseId);
 
     const { getStudentGradesSummary, calculateAverageGrade, calculateOverallPercentage } = await import('../supabaseClient.js');
 
     const grades = await getStudentGradesSummary(parseInt(studentUserId), courseId ? parseInt(courseId) : null);
     console.log('[/average endpoint] Retrieved', grades.length, 'grades from database');
-    
+
     const averageGPA = calculateAverageGrade(grades);
     console.log('[/average endpoint] Calculated average GPA:', averageGPA);
-    
+
     const overallPercentage = calculateOverallPercentage(grades);
     console.log('[/average endpoint] Calculated overall percentage:', overallPercentage);
 
@@ -159,7 +167,7 @@ router.get('/average/:studentUserId', async (req, res) => {
     console.error('Error in /average endpoint:', error);
     res.status(500).json({
       error: 'Failed to calculate average grade',
-      message: error.message,
+      message: error?.message || 'Internal server error',
     });
   }
 });
