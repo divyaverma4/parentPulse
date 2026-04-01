@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.parentpulse.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -45,7 +46,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "apiBaseUrl": "http://100.70.56.141:3000"
+      "apiBaseUrl": "https://ashlea-nonumbilical-superably.ngrok-free.dev"
     }
   }
 }

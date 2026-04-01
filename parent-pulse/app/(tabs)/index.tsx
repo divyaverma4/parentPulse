@@ -31,7 +31,7 @@ export default function ChatScreen() {
 
   const apiBaseUrl =
     // prefer an environment/manifest value, fallback to origin placeholder
-    (Constants.manifest?.extra as any)?.apiBaseUrl || 'exp://100.70.56.141:8081 ';
+    (Constants.manifest?.extra as any)?.apiBaseUrl || 'https://ashlea-nonumbilical-superably.ngrok-free.dev';
 
   useEffect(() => {
     // focus behavior on mobile can be handled by autoFocus on TextInput if needed
@@ -58,6 +58,7 @@ export default function ChatScreen() {
     addMessage(msg, 'error');
   };
 
+  // Replace the existing sendMessage function with this
   const sendMessage = async () => {
     const trimmed = input.trim();
     if (!trimmed) return;
@@ -71,8 +72,21 @@ export default function ChatScreen() {
     setSending(true);
     setTyping(true);
 
+    const endpoint = `${apiBaseUrl}/api/chat/ask`;
+    const controller = new AbortController();
+    const timeoutMs = 15000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    const formatPercent = (v: number | string | null | undefined) => {
+      if (v === null || v === undefined) return null;
+      const cleaned = String(v).replace(/\s|%/g, '');
+      const n = Number(cleaned);
+      if (Number.isNaN(n)) return String(v);
+      return n.toFixed(2);
+    };
+
     try {
-      const res = await fetch(`${apiBaseUrl}/api/chat/ask`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -80,19 +94,45 @@ export default function ChatScreen() {
           studentUserId: parseInt(studentId, 10),
           courseId: null,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!res.ok) {
-        throw new Error(`API request failed: ${res.status}`);
+        const text = await res.text().catch(() => '');
+        let serverMessage: string | null = null;
+        try {
+          const parsed = JSON.parse(text);
+          serverMessage = parsed?.error || parsed?.message || JSON.stringify(parsed);
+        } catch {
+          serverMessage = text;
+        }
+        throw new Error(serverMessage || `API error ${res.status}`);
       }
 
-      const data = await res.json();
-      const answer = data.answer || data.message || "I couldn't generate a response.";
+      const data = await res.json().catch(() => null);
+
+      if (data && typeof data?.overallPercentage !== 'undefined' && data.overallPercentage !== null) {
+        const pct = formatPercent(data.overallPercentage) ?? String(data.overallPercentage);
+        addMessage(`overall percentage calculated: ${pct}`, 'bot');
+      } else {
+        const answer = (data?.answer || data?.message || data?.response) ?? "I couldn't generate a response.";
+        addMessage(answer, 'bot');
+      }
+
       setTyping(false);
-      addMessage(answer, 'bot');
-    } catch (err) {
+    } catch (err: any) {
+      clearTimeout(timeoutId);
       setTyping(false);
-      showError('Sorry, I encountered an error. Please try again.');
+
+      if (err?.name === 'AbortError') {
+        showError('Request timed out. Try again.');
+      } else if ((err?.message || '').includes('Network request failed')) {
+        showError('Network request failed — check that the backend is running and apiBaseUrl is correct.');
+      } else {
+        showError(err?.message ?? 'Sorry, I encountered an error. Please try again.');
+      }
       console.error('Chat API error:', err);
     } finally {
       setSending(false);
