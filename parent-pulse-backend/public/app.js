@@ -95,7 +95,7 @@ class ChatbotApp {
         }
 
         const data = await response.json();
-        return data.answer || data.message || 'I received your message but couldn\'t generate a response.';
+        return data.response || data.answer || data.message || data.error || 'I received your message but couldn\'t generate a response.';
     }
 
     addMessage(content, sender) {
