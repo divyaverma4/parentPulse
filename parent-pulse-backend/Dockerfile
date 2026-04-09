@@ -15,6 +15,7 @@ RUN apk add --no-cache dumb-init
 COPY --from=builder /app/node_modules ./node_modules
 COPY package*.json ./
 COPY src ./src
+COPY public ./public
 
 
 # Create non-root user
