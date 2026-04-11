@@ -13,6 +13,60 @@ function getCourseLabelFromGrade(grade) {
   return 'Unknown Course';
 }
 
+function getCourseLabelFromEnrollment(enrollment) {
+  const courseCode = enrollment?.courses?.course_code;
+  const courseName = enrollment?.courses?.name;
+
+  if (courseCode && courseName) return `${courseCode} - ${courseName}`;
+  if (courseName) return courseName;
+  if (courseCode) return courseCode;
+  return `Course ${enrollment?.course_id}`;
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function resolveCourseFromQuestion(question, courses) {
+  const questionNorm = normalizeText(question);
+  if (!questionNorm) return null;
+
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const course of courses || []) {
+    if (!course?.courses) continue;
+
+    const code = normalizeText(course.courses.course_code || '');
+    const name = normalizeText(course.courses.name || '');
+    const combined = normalizeText(`${course.courses.course_code || ''} ${course.courses.name || ''}`);
+
+    let score = 0;
+    if (code && questionNorm.includes(code)) score += 3;
+    if (name && questionNorm.includes(name)) score += 4;
+    if (combined && questionNorm.includes(combined)) score += 2;
+
+    if (score === 0 && name) {
+      const tokens = name.split(' ').filter(t => t.length > 3);
+      const tokenHits = tokens.filter(t => questionNorm.includes(t)).length;
+      if (tokens.length > 0 && tokenHits >= Math.ceil(tokens.length / 2)) {
+        score += 1;
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = course;
+    }
+  }
+
+  return bestScore > 0 ? bestMatch : null;
+}
+
 function toLetterGrade(averageGPA) {
   if (averageGPA === null) return null;
 
@@ -129,29 +183,25 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
     if (isGradeQuery) {
       let effectiveCourseId = courseId;
       const questionLower = userQuestion.toLowerCase();
+      let matchedCourse = null;
+      let courses = null;
 
-      // Map user terms to math course synonyms, including algebra and mathematics
-      const mathTermsRegex = /\b(math|mathematics|algebra)\b/i;
       const allCoursesRegex = /\b(all\s+(classes|courses)|every\s+(class|course)|across\s+all\s+(classes|courses)|each\s+(class|course)|by\s+(class|course)|broken\s+down\s+by\s+(class|course)|per\s+(class|course))\b/i;
       const asksAllCoursesBreakdown = allCoursesRegex.test(questionLower);
+      const asksOverallGPA = /\b(gpa|overall\s+(gpa|grade|average)|cumulative\s+(gpa|grade|average)|numerical\s+overall)\b/i.test(questionLower);
 
-      if (asksAllCoursesBreakdown) {
+      if (asksAllCoursesBreakdown || asksOverallGPA) {
         // User explicitly asked for cross-course output, so ignore any incoming course scope.
         effectiveCourseId = null;
       }
 
-      if (!effectiveCourseId && !asksAllCoursesBreakdown && mathTermsRegex.test(questionLower)) {
+      if (!effectiveCourseId && !asksAllCoursesBreakdown && !asksOverallGPA) {
         const { getStudentCourses } = await import('./supabaseClient.js');
-        const courses = await getStudentCourses(studentUserId);
+        courses = await getStudentCourses(studentUserId);
+        matchedCourse = resolveCourseFromQuestion(userQuestion, courses);
 
-        const mathCourse = courses.find(c => {
-          if (!c || !c.courses) return false;
-          const candidate = `${c.courses.course_code || ''} ${c.courses.name || ''}`;
-          return mathTermsRegex.test(candidate);
-        });
-
-        if (mathCourse && mathCourse.course_id) {
-          effectiveCourseId = mathCourse.course_id;
+        if (matchedCourse && matchedCourse.course_id) {
+          effectiveCourseId = matchedCourse.course_id;
         }
       }
 
@@ -190,6 +240,44 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
           context: {
             ...averageData,
             courseBreakdown
+          },
+          allGrades: averageData.allGrades,
+          dataUsed: ['grades'],
+          apiCall: 'AVERAGE_GRADE'
+        };
+      }
+
+      if (asksOverallGPA) {
+        return {
+          question: userQuestion,
+          response: `Your overall GPA is ${averageData.averageGrade}.`,
+          overallPercentage: averageData.overallPercentage,
+          context: averageData,
+          allGrades: averageData.allGrades,
+          dataUsed: ['grades'],
+          apiCall: 'AVERAGE_GRADE'
+        };
+      }
+
+      if (matchedCourse && effectiveCourseId) {
+        const courseLabel = getCourseLabelFromEnrollment(matchedCourse);
+        const gpaPart = averageData.averageGrade !== null
+          ? `GPA ${averageData.averageGrade} (${averageData.letterGrade})`
+          : 'No GPA yet';
+        const pctPart = averageData.overallPercentage !== null
+          ? `${averageData.overallPercentage}%`
+          : 'N/A%';
+
+        return {
+          question: userQuestion,
+          response: `${courseLabel}: ${gpaPart}, ${pctPart}, based on ${averageData.gradedAssignments}/${averageData.totalAssignments} assignments.`,
+          overallPercentage: averageData.overallPercentage,
+          context: {
+            ...averageData,
+            matchedCourse: {
+              courseId: matchedCourse.course_id,
+              courseLabel
+            }
           },
           allGrades: averageData.allGrades,
           dataUsed: ['grades'],
