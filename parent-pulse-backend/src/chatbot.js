@@ -31,6 +31,38 @@ function normalizeText(value) {
     .trim();
 }
 
+function resolveCourseBySubjectAlias(question, courses) {
+  const questionNorm = normalizeText(question);
+  if (!questionNorm) return null;
+
+  const subjectAliases = {
+    math: ['math', 'mathematics', 'algebra', 'geometry', 'calculus', 'statistics'],
+    english: ['english', 'ela', 'language arts', 'literature', 'writing'],
+    science: ['science', 'biology', 'chemistry', 'physics'],
+    history: ['history', 'social studies', 'civics', 'government'],
+    art: ['art', 'drawing', 'painting'],
+    music: ['music', 'band', 'choir', 'orchestra'],
+    pe: ['pe', 'p e', 'physical education', 'gym'],
+    computer: ['computer', 'coding', 'programming', 'cs', 'computer science']
+  };
+
+  let requestedAliases = [];
+  for (const aliases of Object.values(subjectAliases)) {
+    const found = aliases.filter(alias => questionNorm.includes(alias));
+    if (found.length > 0) {
+      requestedAliases = requestedAliases.concat(aliases);
+    }
+  }
+
+  if (requestedAliases.length === 0) return null;
+
+  const uniqueAliases = [...new Set(requestedAliases)];
+  return (courses || []).find(course => {
+    const courseText = normalizeText(`${course?.courses?.course_code || ''} ${course?.courses?.name || ''}`);
+    return uniqueAliases.some(alias => courseText.includes(alias));
+  }) || null;
+}
+
 function resolveCourseFromQuestion(question, courses) {
   const questionNorm = normalizeText(question);
   if (!questionNorm) return null;
@@ -198,7 +230,7 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
       if (!effectiveCourseId && !asksAllCoursesBreakdown && !asksOverallGPA) {
         const { getStudentCourses } = await import('./supabaseClient.js');
         courses = await getStudentCourses(studentUserId);
-        matchedCourse = resolveCourseFromQuestion(userQuestion, courses);
+        matchedCourse = resolveCourseBySubjectAlias(userQuestion, courses) || resolveCourseFromQuestion(userQuestion, courses);
 
         if (matchedCourse && matchedCourse.course_id) {
           effectiveCourseId = matchedCourse.course_id;
