@@ -50,6 +50,61 @@ Response:`;
 }
 
 /**
+ * Use OpenAI to resolve which enrolled course (if any) is referenced in a question.
+ * Returns a matching course_id from availableCourses, or null.
+ */
+export async function resolveCourseFromQuestionNLP(question, availableCourses = []) {
+  try {
+    const courseOptions = (availableCourses || []).map(c => ({
+      course_id: c?.course_id,
+      course_code: c?.courses?.course_code || '',
+      course_name: c?.courses?.name || ''
+    }));
+
+    if (courseOptions.length === 0) return null;
+
+    const resolutionPrompt = `You are given a student's question and their enrolled courses.
+Pick the single best matching course only if the question clearly refers to one specific course.
+If the question asks for overall GPA/overall grade/across all classes, return no match.
+If no specific course is clearly referenced, return no match.
+
+Return strict JSON only in this exact format:
+{"course_id": number|null}
+
+Question: ${question}
+Courses: ${JSON.stringify(courseOptions)}`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'user',
+          content: resolutionPrompt,
+        },
+      ],
+      max_tokens: 40,
+      temperature: 0.0,
+    });
+
+    const raw = response.choices[0]?.message?.content?.trim();
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    const resolvedId = parsed?.course_id;
+    if (resolvedId == null) return null;
+
+    const normalizedId = Number(resolvedId);
+    if (Number.isNaN(normalizedId)) return null;
+
+    const valid = courseOptions.some(c => Number(c.course_id) === normalizedId);
+    return valid ? normalizedId : null;
+  } catch (error) {
+    console.error('Error resolving course via NLP:', error);
+    return null;
+  }
+}
+
+/**
  * Generate a response from OpenAI based on a question
  */
 export async function generateResponse(question, context = '') {
