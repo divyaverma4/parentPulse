@@ -166,7 +166,7 @@ export async function generateResponseStream(question, context = '') {
 
     // USE FINE-TUNED MODEL 
     const stream = await openai.chat.completions.create({
-      model: 'ft:gpt-4.1-nano-2025-04-14:personal::DTtLVSKF',
+      model: 'ft:gpt-4.1-nano-2025-04-14:parent-pulse::DXpE75c7',
       messages: messages,
       max_tokens: 500,
       temperature: 0.7,
