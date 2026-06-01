@@ -87,6 +87,162 @@ function toLetterGrade(averageGPA) {
   return letterGrade;
 }
 
+function percentToLetterGrade(pct) {
+  if (pct === null || pct === undefined) return null;
+  const p = parseFloat(pct);
+  if (p >= 90) return 'A';
+  if (p >= 80) return 'B';
+  if (p >= 70) return 'C';
+  if (p >= 60) return 'D';
+  return 'F';
+}
+
+function isTrendQuery(question) {
+  return /\b(trend|improv|getting\s+(better|worse)|going\s+(up|down)|declin|progress|over\s+time|throughout|trajectory|how\s+is\s+he\s+doing\s+over)\b/i.test(question);
+}
+
+function computeTrend(grades) {
+  const valid = (grades || [])
+    .filter(g =>
+      !g.excused &&
+      !g.missing &&
+      g.score != null &&
+      Number(g.assignments?.points_possible) > 0 &&
+      g.assignments?.due_at
+    )
+    .sort((a, b) => new Date(a.assignments.due_at) - new Date(b.assignments.due_at));
+
+  if (valid.length < 4) {
+    return { hasEnoughData: false, count: valid.length };
+  }
+
+  const half = Math.floor(valid.length / 2);
+  const firstHalf = valid.slice(0, half);
+  const secondHalf = valid.slice(-half);
+
+  const avg = (rows) => {
+    let score = 0;
+    let possible = 0;
+    for (const g of rows) {
+      score += Number(g.score);
+      possible += Number(g.assignments.points_possible);
+    }
+    return possible > 0 ? (score / possible) * 100 : 0;
+  };
+
+  const firstAvg = avg(firstHalf);
+  const secondAvg = avg(secondHalf);
+  const diff = secondAvg - firstAvg;
+
+  let direction;
+  if (diff > 5) direction = 'improving';
+  else if (diff < -5) direction = 'declining';
+  else direction = 'steady';
+
+  return {
+    hasEnoughData: true,
+    count: valid.length,
+    firstHalfAvg: firstAvg.toFixed(1),
+    secondHalfAvg: secondAvg.toFixed(1),
+    diff: diff.toFixed(1),
+    direction,
+    firstDate: String(valid[0].assignments.due_at).slice(0, 10),
+    lastDate: String(valid[valid.length - 1].assignments.due_at).slice(0, 10),
+  };
+}
+
+function extractDateRange(question) {
+  const q = question.toLowerCase();
+  const now = new Date();
+
+  if (/\bthis\s+week\b/.test(q)) {
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay());
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    return { start, end, label: 'this week' };
+  }
+
+  if (/\blast\s+week\b/.test(q)) {
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay() - 7);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    return { start, end, label: 'last week' };
+  }
+
+  if (/\bthis\s+month\b/.test(q)) {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return { start, end, label: 'this month' };
+  }
+
+  if (/\blast\s+month\b/.test(q)) {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { start, end, label: 'last month' };
+  }
+
+  const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+                       'july', 'august', 'september', 'october', 'november', 'december'];
+  for (let i = 0; i < monthNames.length; i++) {
+    if (new RegExp(`\\b${monthNames[i]}\\b`, 'i').test(q)) {
+      let year = now.getFullYear();
+      let start = new Date(year, i, 1);
+      // If the month is in the future this year, use previous year
+      if (start > now) {
+        year -= 1;
+        start = new Date(year, i, 1);
+      }
+      const end = new Date(year, i + 1, 1);
+      return { start, end, label: monthNames[i] };
+    }
+  }
+
+  // T1/T2/T3 semester references map to assignments.semester column
+  const semMatch = q.match(/\b(t|term\s+|semester\s+)([1-3])\b/i);
+  if (semMatch) {
+    return { semester: Number(semMatch[2]), label: `T${semMatch[2]}` };
+  }
+
+  return null;
+}
+
+function buildAssignmentListContext(grades, courseLabel) {
+  let context = courseLabel ? `Course: ${courseLabel}\n\n` : '';
+  context += 'Assignment List (only graded, non-excused, non-missing):\n';
+
+  const valid = (grades || []).filter(g => {
+    if (g.excused || g.missing) return false;
+    const a = g.assignments;
+    return a && Number(a.points_possible) > 0 && g.score != null;
+  });
+
+  // Group by category
+  const byCategory = new Map();
+  for (const g of valid) {
+    const cat = g.assignments?.assignment_groups?.name || 'Uncategorized';
+    if (!byCategory.has(cat)) byCategory.set(cat, []);
+    byCategory.get(cat).push(g);
+  }
+
+  for (const [cat, items] of byCategory.entries()) {
+    context += `\n${cat}:\n`;
+    for (const g of items) {
+      const a = g.assignments;
+      const pts = Number(a.points_possible);
+      const score = Number(g.score);
+      const pct = ((score / pts) * 100).toFixed(1);
+      const due = a.due_at ? String(a.due_at).slice(0, 10) : 'N/A';
+      context += `  - ${a.name}: ${score}/${pts} (${pct}%), due ${due}\n`;
+    }
+  }
+
+  return context;
+}
+
 async function buildCourseBreakdown(grades) {
   const { calculateAverageGrade, calculateOverallPercentage } = await import('./supabaseClient.js');
 
@@ -215,6 +371,95 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
       }
 
       const averageData = await getAverageGrade(studentUserId, effectiveCourseId);
+
+      const dateRange = extractDateRange(userQuestion);
+      if (dateRange) {
+        const allGrades = averageData.allGrades || [];
+        const filteredGrades = allGrades.filter(g => {
+          if (dateRange.semester != null) {
+            return Number(g.assignments?.semester) === dateRange.semester;
+          }
+          const dueAt = g.assignments?.due_at;
+          if (!dueAt) return false;
+          const d = new Date(dueAt);
+          return d >= dateRange.start && d < dateRange.end;
+        });
+
+        if (filteredGrades.length === 0) {
+          return {
+            question: userQuestion,
+            response: `No graded assignments found for ${dateRange.label}.`,
+            context: { ...averageData, dateRange: dateRange.label, filteredCount: 0 },
+            allGrades: [],
+            dataUsed: ['grades'],
+            apiCall: 'DATE_RANGE_GRADE_QUERY'
+          };
+        }
+
+        const courseLabel = matchedCourse ? getCourseLabelFromEnrollment(matchedCourse) : null;
+        const ctx = `Date range: ${dateRange.label}\n\n` + buildAssignmentListContext(filteredGrades, courseLabel);
+        const aiResponse = await generateResponse(userQuestion, ctx);
+
+        return {
+          question: userQuestion,
+          response: aiResponse,
+          context: { ...averageData, dateRange: dateRange.label, filteredCount: filteredGrades.length },
+          allGrades: filteredGrades,
+          dataUsed: ['grades'],
+          apiCall: 'DATE_RANGE_GRADE_QUERY'
+        };
+      }
+
+      if (isTrendQuery(userQuestion)) {
+        const trend = computeTrend(averageData.allGrades);
+        const courseLabel = matchedCourse
+          ? getCourseLabelFromEnrollment(matchedCourse)
+          : 'across all courses';
+
+        if (!trend.hasEnoughData) {
+          return {
+            question: userQuestion,
+            response: `Not enough graded assignments to detect a trend yet (need at least 4, currently have ${trend.count}).`,
+            context: { ...averageData, trend },
+            allGrades: averageData.allGrades,
+            dataUsed: ['grades'],
+            apiCall: 'TREND_QUERY'
+          };
+        }
+
+        const sign = parseFloat(trend.diff) >= 0 ? '+' : '';
+        const response = `${courseLabel}: Grades are ${trend.direction}. ` +
+          `Early average (from ${trend.firstDate}): ${trend.firstHalfAvg}%. ` +
+          `Recent average (through ${trend.lastDate}): ${trend.secondHalfAvg}%. ` +
+          `That's a ${sign}${trend.diff}% change over ${trend.count} graded assignments.`;
+
+        return {
+          question: userQuestion,
+          response,
+          context: { ...averageData, trend },
+          allGrades: averageData.allGrades,
+          dataUsed: ['grades'],
+          apiCall: 'TREND_QUERY'
+        };
+      }
+
+      const asksSpecificAssignment = /\b(highest|lowest|best|worst|top|bottom|which\s+(assignment|test|quiz|project|grade|score)|what\s+(test|quiz|assignment|project)|how\s+did\s+he\s+do\s+on|how\s+did\s+she\s+do\s+on)\b/i.test(questionLower);
+
+      if (asksSpecificAssignment && !asksAllCoursesBreakdown) {
+        const courseLabel = matchedCourse ? getCourseLabelFromEnrollment(matchedCourse) : null;
+        const detailedContext = buildAssignmentListContext(averageData.allGrades, courseLabel);
+        const aiResponse = await generateResponse(userQuestion, detailedContext);
+
+        return {
+          question: userQuestion,
+          response: aiResponse,
+          overallPercentage: averageData.overallPercentage,
+          context: averageData,
+          allGrades: averageData.allGrades,
+          dataUsed: ['grades'],
+          apiCall: 'SPECIFIC_GRADE_QUERY'
+        };
+      }
 
       if (asksAllCoursesBreakdown) {
         const courseBreakdown = await buildCourseBreakdown(averageData.allGrades || []);
