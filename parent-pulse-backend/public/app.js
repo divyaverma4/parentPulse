@@ -45,6 +45,8 @@ class ChatbotApp {
         }
 
         this.handleViewportHeight();
+
+        
     }
 
     toggleDarkMode() {
@@ -216,6 +218,32 @@ class ChatbotApp {
         }
 
         this.setInputDisabled(false);
+    }
+
+    async uploadReport() {
+        if (!this.reportFileInput || !this.reportFileInput.files || this.reportFileInput.files.length === 0) {
+            this.uploadStatus.textContent = 'Select a JSON file first.';
+            return;
+        }
+
+        const file = this.reportFileInput.files[0];
+        try {
+            const text = await file.text();
+            const json = JSON.parse(text);
+
+            this.uploadStatus.textContent = 'Uploading...';
+            const res = await fetch('/api/report/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(json)
+            });
+
+            if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+            this.uploadStatus.textContent = 'Upload successful — buttons will use the new report.';
+        } catch (err) {
+            console.error('Upload error', err);
+            this.uploadStatus.textContent = 'Upload failed: ' + (err.message || err);
+        }
     }
 }
 
