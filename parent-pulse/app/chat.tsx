@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import Constants from 'expo-constants';
+import ActionButtons from '@/components/ActionButtons';
 
 type Message = {
   id: string;
@@ -134,6 +135,73 @@ export default function ChatScreen() {
     }
   };
 
+  const sendDirectMessage = async (message: string) => {
+    if (!message.trim()) return;
+    if (!studentId.trim()) {
+      showError('Please enter a Student ID');
+      return;
+    }
+
+    addMessage(message, 'user');
+    setSending(true);
+    setTyping(true);
+
+    const endpoint = `${apiBaseUrl}/api/chat/ask`;
+    console.log('[chat] POST ->', endpoint);
+
+    const controller = new AbortController();
+    const timeoutMs = 15000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: message,
+          studentUserId: parseInt(studentId, 10),
+          courseId: null,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const bodyText = await res.text().catch(() => '');
+        let serverMessage: string | null = null;
+        try {
+          const parsed = JSON.parse(bodyText);
+          serverMessage = parsed?.error || parsed?.message || JSON.stringify(parsed);
+        } catch {
+          serverMessage = bodyText;
+        }
+        throw new Error(serverMessage || `API error ${res.status}`);
+      }
+
+      const data = await res.json();
+      const answer = (data.answer || data.message || data.response) ?? "I couldn't generate a response.";
+      addMessage(answer, 'bot');
+
+      setTyping(false);
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      setTyping(false);
+
+      if (err?.name === 'AbortError') {
+        showError('Request timed out. Try again.');
+      } else if ((err?.message || '').includes('Network request failed')) {
+        showError('Network request failed — check that the backend is running and `apiBaseUrl` is correct.');
+      } else {
+        showError(err?.message ?? 'Sorry, I encountered an error. Please try again.');
+      }
+
+      console.error('Chat API error:', err);
+    } finally {
+      setSending(false);
+    }
+  };
+
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.sender === 'user';
     const isError = item.sender === 'error';
@@ -221,6 +289,12 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <ActionButtons
+        studentId={studentId}
+        onSendMessage={sendDirectMessage}
+        isLoading={sending}
+      />
     </SafeAreaView>
   );
 }
