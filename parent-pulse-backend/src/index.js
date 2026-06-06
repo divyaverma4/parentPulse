@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import chatRoutes from './routes/chat.js';
+import reportsRoutes from './routes/reports.js';
 
 dotenv.config();
 
@@ -31,6 +32,8 @@ app.get('/api/health', (req, res) => {
 
 // Chat API routes
 app.use('/api/chat', chatRoutes);
+// Report upload / retrieval
+app.use('/api/report', reportsRoutes);
 
 // Root endpoint - serve the frontend
 app.get('/', (req, res) => {
@@ -44,6 +47,8 @@ app.get('/api', (req, res) => {
     endpoints: {
       health: 'GET /api/health',
       ask: 'POST /api/chat/ask - Ask a question',
+      report_latest: 'GET /api/report/latest - Get the latest uploaded report',
+      report_upload: 'POST /api/report/upload - Upload new report JSON',
       insights: 'GET /api/chat/insights/:studentUserId - Get student insights',
       stream: 'POST /api/chat/stream - Stream AI response',
     },
