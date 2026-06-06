@@ -1,4 +1,4 @@
-// File: `src/routes/chat.js` (Node / Express router)
+// File: src/routes/chat.js
 import express from 'express';
 import { askQuestion, getStudentInsights } from '../chatbot.js';
 
@@ -6,12 +6,13 @@ const router = express.Router();
 
 /**
  * POST /api/chat/ask
- * Client expects this exact path, so router paths here are appended to the mount path.
- * If this router is mounted with app.use('/api/chat', router) then the full path is /api/chat/ask
+ * Handles BOTH:
+ *  - normal chat questions
+ *  - preset button questions with a report
  */
 router.post('/ask', async (req, res) => {
   try {
-    const { question, studentUserId, courseId } = req.body;
+    const { question, studentUserId, courseId, report } = req.body;
 
     if (!question) {
       return res.status(400).json({ error: 'Question is required' });
@@ -21,7 +22,14 @@ router.post('/ask', async (req, res) => {
       return res.status(400).json({ error: 'studentUserId is required' });
     }
 
-    const result = await askQuestion(question, studentUserId, courseId);
+    // Pass report ONLY if provided (normal chat still works)
+    const result = await askQuestion(
+      question,
+      studentUserId,
+      courseId || null,
+      report || null
+    );
+
     res.json(result);
   } catch (error) {
     console.error('Error in /ask endpoint:', error);
@@ -91,13 +99,12 @@ router.post('/stream', async (req, res) => {
     res.end();
   } catch (error) {
     console.error('Error in /stream endpoint:', error);
-    // Can't send JSON after streaming headers; if an error happens early, try JSON; otherwise log and end
     try {
       res.status(500).json({
         error: 'Failed to stream response',
         message: error?.message || 'Internal server error',
       });
-    } catch (e) {
+    } catch {
       res.end();
     }
   }
