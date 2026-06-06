@@ -1,0 +1,8 @@
+
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
+parent-pulse-backend/node_modules
+parent-pulse/node_modules
+parent-pulse/.env
+parent-pulse-backend/.env

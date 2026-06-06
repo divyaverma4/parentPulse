@@ -240,7 +240,7 @@ export default function ChatScreen() {
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
+        style={styles.keyboardAvoid}
         keyboardVerticalOffset={90}
       >
         <ScrollView
@@ -301,9 +301,11 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  keyboardAvoid: { flex: 1 },
   container: {
     flex: 1,
     backgroundColor: '#f6f7fb',
+    flexDirection: 'column',
   },
   header: {
     backgroundColor: 'rgba(255,255,255,0.95)',
@@ -326,7 +328,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#fff',
   },
-  chatContainer: { flex: 1, paddingHorizontal: 12 },
+  chatContainer: { flex: 1, paddingHorizontal: 12, maxHeight: '60%' },
   chatContent: { paddingVertical: 12 },
   messageWrapper: { marginBottom: 8 },
   message: { flexDirection: 'row' },
