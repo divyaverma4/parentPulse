@@ -1,0 +1,109 @@
+{
+  "entries": [
+    {
+      "date": "2025-10-20",
+      "day": "Monday",
+      "subjects": {
+        "English Language Arts": {
+          "Humphreys": {
+            "today": "Took a quiz on VW Unit 3 and then worked on DGP #8. Made a copy of the study guide from the Stream into a Google Doc.",
+            "homework": "ELA Edmentum due Friday, October 24.",
+            "upcoming": "ELA Trimester 1 Exam - Wednesday, October 29.",
+            "other": "Study Topics are now posted in the Stream in Google Classroom."
+          },
+          "O'Hannigan": {
+            "today": "Worked on ELA Edmentum and AR Tests.",
+            "homework": "Read for AR.",
+            "upcoming": "N/A",
+            "other": "12 AR Points Needed for each month."
+          }
+        },
+        "Pre-Algebra": {
+          "today": "Found the least common multiple of two numbers.",
+          "homework": "Section 5-3, problems 2-24 even.",
+          "upcoming": "None",
+          "other": "None"
+        },
+        "Religion": {
+          "today": "Reviewed 7.II.A.- Hypostatic Union and Catholic definition.",
+          "homework": "",
+          "upcoming": "None",
+          "other": "T1 Exam Thurs 10/30."
+        },
+        "Science": {
+          "today": "Students continued with the different types of transport in cells, looking at osmosis, facilitated diffusion, and active transport.",
+          "homework": "Discovery Tech Book Reading Due Friday - Engage, Explore, Explain only. Infectious Diseases.",
+          "upcoming": "Trimester exam 10/29; study guides are in Google Classroom.",
+          "other": ""
+        },
+        "Social Studies": {
+          "today": "Discussed the role of Founding Fathers.",
+          "homework": "",
+          "upcoming": "",
+          "other": ""
+        },
+        "World Language": {
+          "today": "Completed Regular verbs online practice (due today). Started working on conjugation project. Intro to trimester project.",
+          "homework": "Memorize verbs: meaning and conjugations. Complete any incomplete missing work.",
+          "upcoming": "Conjugation project due Oct 23. Advanced Spanish: Last day to turn in book summary, glossary, and take -AR quiz on Monday, 10/27.",
+          "other": "SpanishDictionary lessons due Wednesday. Tidy up."
+        }
+      },
+      "upcoming_dates": [
+        "10/23 Bishop Moore Presentation 12:30",
+        "10/24 Megablast",
+        "10/30 8th grade to BMCHS until 11:00",
+        "11/7 and 11/8 Parish Festival – volunteer one shift per child (up to 2 total)",
+        "11/12 8th grade Fall Retreat",
+        "12/10 6th Grade Trip to KSC",
+        "12/17 7th Grade Trip to Tampa Aquarium"
+      ],
+      "exam_schedule": {
+        "10/28": "Spanish (7th/8th)",
+        "10/29": "ELA block (all) and Science (7th/8th)",
+        "10/30": "Religion (7th/8th) and Social Studies (7th/8th)",
+        "10/31": "Math (all)"
+      }
+    },
+    {
+      "date": "2025-10-21",
+      "day": "Tuesday",
+      "subjects": {
+        "English Language Arts": {
+          "Humphreys": {
+            "today": "Went through DGP Sentences 1-8 and made a study guide. Reviewed the study guide for the exam. Worked on ELA Edmentum.",
+            "homework": "ELA Edmentum due Friday, October 24.",
+            "upcoming": "ELA Trimester 1 Exam - Wednesday, October 29.",
+            "other": "Study Topics are now posted in the Stream in Google Classroom."
+          },
+          "O'Hannigan": {
+            "today": "Read and annotated 'Thank You Ma'am' in the HMH textbook. Answered analytical questions.",
+            "homework": "Read for AR.",
+            "upcoming": "N/A",
+            "other": "12 AR Points Needed for each month."
+          }
+        },
+        "Pre-Algebra": {
+          "today": "Worked on weekly Edmentum assignment.",
+          "homework": "None",
+          "upcoming": "None",
+          "other": "None"
+        },
+        "Science": {
+          "today": "Students investigated osmosis with potatoes; will finish lab report tomorrow.",
+          "homework": "Discovery Tech Book Reading Due Friday - Engage, Explore, Explain only. Infectious Diseases.",
+          "upcoming": "Trimester exam 10/29; study guides are in Google Classroom.",
+          "other": ""
+        },
+        "Social Studies": {
+          "today": "Discussed the role of Paul Revere and company during the events at Lexington and Concord.",
+          "homework": "Founding Fathers due on GC.",
+          "upcoming": "",
+          "other": ""
+        }
+      },
+      "upcoming_dates": [],
+      "exam_schedule": {}
+    }
+  ]
+}

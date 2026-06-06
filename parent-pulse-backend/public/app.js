@@ -5,6 +5,10 @@ class ChatbotApp {
         this.sendButton = document.getElementById('send-button');
         this.studentIdInput = document.getElementById('studentId');
         this.darkToggle = document.getElementById('dark-mode-toggle');
+        this.btnUpcomingTests = document.getElementById('btn-upcoming-tests');
+        this.btnUpcomingDue = document.getElementById('btn-upcoming-due');
+        this.btnLowestGrade = document.getElementById('btn-lowest-grade');
+        this.btnMissing = document.getElementById('btn-missing-assignments');
 
         this.apiBaseUrl = window.location.origin;
         this.isTyping = false;
@@ -28,6 +32,12 @@ class ChatbotApp {
             this.darkToggle.textContent = '☀️ Light';
         }
         this.darkToggle.addEventListener('click', () => this.toggleDarkMode());
+
+        // Action buttons
+        if (this.btnUpcomingTests) this.btnUpcomingTests.addEventListener('click', () => this.sendPreset('upcoming_tests'));
+        if (this.btnUpcomingDue) this.btnUpcomingDue.addEventListener('click', () => this.sendPreset('upcoming_due'));
+        if (this.btnLowestGrade) this.btnLowestGrade.addEventListener('click', () => this.sendPreset('lowest_grade'));
+        if (this.btnMissing) this.btnMissing.addEventListener('click', () => this.sendPreset('missing_assignments'));
 
         // Auto-focus input on mobile
         if ('ontouchstart' in window) {
@@ -83,17 +93,20 @@ class ChatbotApp {
         this.messageInput.focus();
     }
 
-    async callChatAPI(question, studentId) {
+    async callChatAPI(question, studentId, report = null) {
+        const body = {
+            question: question,
+            studentUserId: parseInt(studentId),
+            courseId: null
+        };
+        if (report) body.report = report;
+
         const response = await fetch(`${this.apiBaseUrl}/api/chat/ask`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                question: question,
-                studentUserId: parseInt(studentId),
-                courseId: null
-            })
+            body: JSON.stringify(body)
         });
 
         if (!response.ok) {
@@ -162,6 +175,48 @@ class ChatbotApp {
             this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
         }, 100);
     }
+
+    async sendPreset(kind) {
+        const studentId = this.studentIdInput.value.trim();
+        if (!studentId) {
+            this.showError('Please enter a Student ID');
+            return;
+        }
+
+        const prompts = {
+            upcoming_tests: 'Please provide the upcoming tests and exam schedule for this student this week.',
+            upcoming_due: 'List upcoming due dates and homework due soon for this student.',
+            lowest_grade: "What's the student's lowest class grade and a short summary of concern?",
+            missing_assignments: 'List missing assignments for this student.'
+        };
+
+        const question = prompts[kind] || 'Please summarize the student status.';
+
+        // fetch sample report from public endpoint
+        let report = null;
+        try {
+            const r = await fetch('/sampleReport.json');
+            if (r.ok) report = await r.json();
+        } catch (e) {
+            console.warn('Could not fetch sampleReport.json', e);
+        }
+
+        this.addMessage(question, 'user');
+        this.setInputDisabled(true);
+        this.showTypingIndicator();
+
+        try {
+            const response = await this.callChatAPI(question, studentId, report);
+            this.hideTypingIndicator();
+            this.addMessage(response, 'bot');
+        } catch (err) {
+            this.hideTypingIndicator();
+            this.showError('Sorry, I encountered an error. Please try again.');
+            console.error('Preset API error:', err);
+        }
+
+        this.setInputDisabled(false);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -173,3 +228,4 @@ if ('serviceWorker' in navigator) {
         // navigator.serviceWorker.register('/sw.js');
     });
 }
+    
