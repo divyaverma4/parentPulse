@@ -5,22 +5,43 @@ import path from 'path';
 const router = express.Router();
 
 const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
-const REPORT_FILE = path.join(PUBLIC_DIR, 'sampleReport.json');
+const SAMPLE_REPORT_FILE = path.join(PUBLIC_DIR, 'sampleReport.json');
+const SAMIR_GRADES_FILE = path.join(PUBLIC_DIR, 'grades_samir.json');
 
 router.get('/latest', async (req, res) => {
   try {
-    if (!fs.existsSync(REPORT_FILE)) return res.status(404).json({ error: 'No report found' });
-    const raw = await fs.promises.readFile(REPORT_FILE, 'utf-8');
-    const json = JSON.parse(raw);
-    res.json(json);
+    const response = {};
+
+    // Load sampleReport.json
+    if (fs.existsSync(SAMPLE_REPORT_FILE)) {
+      const raw = await fs.promises.readFile(SAMPLE_REPORT_FILE, 'utf-8');
+      response.sampleReport = JSON.parse(raw);
+    } else {
+      response.sampleReport = null;
+    }
+
+    // Load grades_samir.json
+    if (fs.existsSync(SAMIR_GRADES_FILE)) {
+      const raw = await fs.promises.readFile(SAMIR_GRADES_FILE, 'utf-8');
+      response.gradesSamir = JSON.parse(raw);
+    } else {
+      response.gradesSamir = null;
+    }
+
+    // If both missing → 404
+    if (!response.sampleReport && !response.gradesSamir) {
+      return res.status(404).json({ error: 'No report files found' });
+    }
+
+    res.json(response);
+
   } catch (err) {
     console.error('Error reading latest report:', err);
-    res.status(500).json({ error: 'Failed to read report' });
+    res.status(500).json({ error: 'Failed to read report files' });
   }
 });
 
-// Simple upload endpoint: accepts JSON body and overwrites public/sampleReport.json
-// Optional protection: set REPORT_UPLOAD_KEY env var and POST with header 'x-upload-key' matching it.
+// Upload endpoint (unchanged)
 router.post('/upload', async (req, res) => {
   try {
     const UPLOAD_KEY = process.env.REPORT_UPLOAD_KEY;
@@ -32,13 +53,15 @@ router.post('/upload', async (req, res) => {
     }
 
     const report = req.body;
-    if (!report || typeof report !== 'object') return res.status(400).json({ error: 'JSON body required' });
+    if (!report || typeof report !== 'object') {
+      return res.status(400).json({ error: 'JSON body required' });
+    }
 
     const out = JSON.stringify(report, null, 2);
-    await fs.promises.writeFile(REPORT_FILE, out, 'utf-8');
+    await fs.promises.writeFile(SAMPLE_REPORT_FILE, out, 'utf-8');
 
-    // return the saved report
     res.json({ ok: true, path: '/sampleReport.json' });
+
   } catch (err) {
     console.error('Error saving report:', err);
     res.status(500).json({ error: 'Failed to save report' });
