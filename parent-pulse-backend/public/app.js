@@ -188,7 +188,7 @@ class ChatbotApp {
         const prompts = {
             upcoming_tests: 'Please provide the upcoming tests and exam schedule for this student this week.',
             upcoming_due: 'List upcoming due dates and homework due soon for this student.',
-            lowest_grade: "Which class does this student have the lowest overall grade in? Provide a short explanation why based on the overall grades in each class for the student. Only give me the class with the lowest overall grade and those corresponding details.",
+            lowest_grade: "Which class does this student have the lowest overall grade in? Only tell me the class with the lowest overall grade and corresponding details as to why that grade is low.",
             missing_assignments: 'List missing assignments for this student.'
         };
 
