@@ -109,6 +109,57 @@ export async function getStudentCourses(studentUserId) {
 }
 
 /**
+ * Get per-term grades (the authoritative report-card grade for each grading period)
+ * for a student, optionally scoped to a single course.
+ *
+ * Returns rows of { course_id, courseLabel, title, term_grade, letter_grade }.
+ */
+export async function getStudentTermGrades(studentUserId, courseId = null) {
+  try {
+    let courseIds;
+    if (courseId != null) {
+      courseIds = [Number(courseId)];
+    } else {
+      const courses = await getStudentCourses(studentUserId);
+      courseIds = courses.map(c => Number(c.course_id)).filter(id => !Number.isNaN(id));
+    }
+
+    if (courseIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('grading_periods')
+      .select(`
+        course_id,
+        title,
+        term_grade,
+        letter_grade,
+        courses(course_code, name)
+      `)
+      .in('course_id', courseIds);
+
+    if (error) throw error;
+
+    return (data || [])
+      .filter(row => row.term_grade != null)
+      .map(row => {
+        const code = row.courses?.course_code;
+        const name = row.courses?.name;
+        const courseLabel = code && name ? `${code} - ${name}` : (name || code || `Course ${row.course_id}`);
+        return {
+          course_id: row.course_id,
+          courseLabel,
+          title: row.title,
+          term_grade: Number(row.term_grade),
+          letter_grade: row.letter_grade ?? null
+        };
+      });
+  } catch (error) {
+    console.error('Error fetching student term grades:', error);
+    throw error;
+  }
+}
+
+/**
  * Get assignment group weights and details
  */
 export async function getAssignmentGroupWeights(courseId) {

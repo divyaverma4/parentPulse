@@ -1,4 +1,4 @@
-import { queryContextForQuestion, getStudentInfo, formatContextForOpenAI } from './supabaseClient.js';
+import { queryContextForQuestion, getStudentInfo, formatContextForOpenAI, getStudentTermGrades } from './supabaseClient.js';
 import { generateResponse, generateResponseStream, classifyQuestionIntent, resolveCourseFromQuestionNLP } from './openaiClient.js';
 
 function getCourseLabelFromGrade(grade) {
@@ -99,6 +99,61 @@ function percentToLetterGrade(pct) {
 
 function isTrendQuery(question) {
   return /\b(trend|improv|getting\s+(better|worse)|going\s+(up|down)|declin|progress|over\s+time|throughout|trajectory|how\s+is\s+he\s+doing\s+over)\b/i.test(question);
+}
+
+function termSortKey(title) {
+  const m = String(title).match(/(\d+)/);
+  return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * Compute a grade trend from the authoritative per-term (report-card) grades.
+ * When multiple courses are passed (an all-courses question), grades are
+ * averaged per term before comparing the first term to the last.
+ */
+function computeTermTrend(termRows) {
+  if (!termRows || termRows.length === 0) {
+    return { hasEnoughData: false, count: 0 };
+  }
+
+  const byTerm = new Map();
+  for (const r of termRows) {
+    if (r.term_grade == null || Number.isNaN(Number(r.term_grade))) continue;
+    if (!byTerm.has(r.title)) byTerm.set(r.title, []);
+    byTerm.get(r.title).push(Number(r.term_grade));
+  }
+
+  const terms = [...byTerm.entries()]
+    .map(([title, grades]) => ({
+      title,
+      avg: grades.reduce((s, g) => s + g, 0) / grades.length
+    }))
+    .sort((a, b) => termSortKey(a.title) - termSortKey(b.title));
+
+  if (terms.length < 2) {
+    return { hasEnoughData: false, count: terms.length };
+  }
+
+  const first = terms[0].avg;
+  const last = terms[terms.length - 1].avg;
+  const diff = last - first;
+
+  let direction;
+  if (diff > 1) direction = 'improving';
+  else if (diff < -1) direction = 'declining';
+  else direction = 'steady';
+
+  return {
+    hasEnoughData: true,
+    count: terms.length,
+    terms: terms.map(t => ({ title: t.title, grade: t.avg.toFixed(2) })),
+    firstTerm: terms[0].title,
+    lastTerm: terms[terms.length - 1].title,
+    firstGrade: first.toFixed(2),
+    lastGrade: last.toFixed(2),
+    diff: diff.toFixed(2),
+    direction
+  };
 }
 
 function computeTrend(grades) {
@@ -427,16 +482,39 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
       }
 
       if (isTrendQuery(userQuestion)) {
-        const trend = computeTrend(averageData.allGrades);
         const courseLabel = matchedCourse
           ? getCourseLabelFromEnrollment(matchedCourse)
           : 'across all courses';
 
+        // Prefer the authoritative per-term (report-card) grades when available.
+        const termGrades = await getStudentTermGrades(studentUserId, effectiveCourseId);
+        const termTrend = computeTermTrend(termGrades);
+
+        if (termTrend.hasEnoughData) {
+          const sign = parseFloat(termTrend.diff) >= 0 ? '+' : '';
+          const trajectory = termTrend.terms.map(t => `${t.title} ${t.grade}%`).join(' → ');
+          const response = `${courseLabel}: Grade is ${termTrend.direction}. ` +
+            `Term-by-term: ${trajectory}. ` +
+            `That's a ${sign}${termTrend.diff}% change from ${termTrend.firstTerm} to ${termTrend.lastTerm}.`;
+
+          return {
+            question: userQuestion,
+            response,
+            context: { ...averageData, termTrend },
+            allGrades: averageData.allGrades,
+            dataUsed: ['grades'],
+            apiCall: 'TREND_QUERY'
+          };
+        }
+
+        // Fall back to the assignment-based trend when term grades are missing.
+        const trend = computeTrend(averageData.allGrades);
+
         if (!trend.hasEnoughData) {
           return {
             question: userQuestion,
-            response: `Not enough graded assignments to detect a trend yet (need at least 4, currently have ${trend.count}).`,
-            context: { ...averageData, trend },
+            response: `Not enough data to detect a trend yet (need at least 2 graded terms or 4 graded assignments; have ${termTrend.count} term(s) and ${trend.count} assignment(s)).`,
+            context: { ...averageData, trend, termTrend },
             allGrades: averageData.allGrades,
             dataUsed: ['grades'],
             apiCall: 'TREND_QUERY'
