@@ -177,12 +177,18 @@ CREATE TABLE IF NOT EXISTS public.grading_periods (
   end_date date NOT NULL,
   close_date date,
   weight numeric,
+  term_grade numeric,
+  letter_grade text,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT grading_periods_pkey PRIMARY KEY (grading_period_id),
   CONSTRAINT grading_periods_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(course_id)
 );
 
 ALTER TABLE public.grading_periods ENABLE ROW LEVEL SECURITY;
+
+-- Backfill columns on existing databases (no-op if already present)
+ALTER TABLE public.grading_periods ADD COLUMN IF NOT EXISTS term_grade numeric;
+ALTER TABLE public.grading_periods ADD COLUMN IF NOT EXISTS letter_grade text;
 
 -- ============================================
 -- OBSERVER_LINKS TABLE (for parent-student relationships)
@@ -282,6 +288,10 @@ CREATE POLICY "Allow authenticated users to read assignments" ON public.assignme
 
 -- Allow authenticated users to read submissions
 CREATE POLICY "Allow authenticated users to read submissions" ON public.submissions
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Allow authenticated users to read grading periods (term grades)
+CREATE POLICY "Allow authenticated users to read grading periods" ON public.grading_periods
   FOR SELECT USING (auth.role() = 'authenticated');
 
 -- ============================================
