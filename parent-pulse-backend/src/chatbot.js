@@ -386,8 +386,14 @@ export async function getAverageGrade(studentUserId, courseId = null) {
 /**
  * Ask a question and get AI response based on live database data
  */
-export async function askQuestion(userQuestion, studentUserId, courseId = null) {
+export async function askQuestion(userQuestion, studentUserId, courseId = null, report = null) {
   try {
+    // If a report was provided (preset buttons), inject it into the context
+let reportContext = '';
+if (report) {
+  reportContext = `\n\nAdditional student report JSON:\n${JSON.stringify(report, null, 2)}\n\n`;
+}
+
     // Use OpenAI to classify if this is a grade-related query
     const isGradeQuery = await classifyQuestionIntent(userQuestion);
 
@@ -542,7 +548,12 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
       if (asksSpecificAssignment && !asksAllCoursesBreakdown) {
         const courseLabel = matchedCourse ? getCourseLabelFromEnrollment(matchedCourse) : null;
         const detailedContext = buildAssignmentListContext(averageData.allGrades, courseLabel);
-        const aiResponse = await generateResponse(userQuestion, detailedContext);
+        const aiResponse = await generateResponse(
+  userQuestion,
+  reportContext + detailedContext
+
+);
+
 
         return {
           question: userQuestion,
@@ -659,7 +670,11 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
     const contextString = formatContextForOpenAI(contextData);
 
     // Generate response using OpenAI with real data context
-    const aiResponse = await generateResponse(userQuestion, contextString);
+    const aiResponse = await generateResponse(
+  userQuestion,
+  reportContext + contextString
+);
+
 
     // Check if OpenAI indicated this should be an API call
     if (aiResponse.includes('[API_CALL:AVERAGE_GRADE]')) {

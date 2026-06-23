@@ -1,17 +1,6 @@
-# Environment / secrets
-.env
-.env.*
-!.env.example
-
-# Claude Code local files
-.claude/
-
-# Dependencies
-node_modules/
-
-# Logs
-*.log
-npm-debug.log*
-
-# OS / editor
-.DS_Store
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
+parent-pulse-backend/node_modules
+parent-pulse/node_modules
+parent-pulse/.env
+parent-pulse-backend/.env
