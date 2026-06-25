@@ -26,26 +26,27 @@ router.post('/quiz-from-pdf', async (req, res) => {
 
         // Ask OpenAI to generate quiz questions
         const completion = await openai.chat.completions.create({
-            model: "gpt-4.1",
-            messages: [
+    model: "gpt-4.1",
+    messages: [
+        {
+            role: "user",
+            content: [
                 {
-                    role: "user",
-                    content: [
-                        { type: "input_text", text: 
-                            "Using this PDF, generate 10 quiz questions. Only output the questions in a numbered list." 
-                        },
-                        {
-                            type: "input_file",
-                            file: {
-                                name: fileName,
-                                mime_type: "application/pdf",
-                                data: fileData
-                            }
-                        }
-                    ]
+                    type: "text",
+                    text: "Using this PDF, generate 10 quiz questions. Only output the questions in a numbered list."
+                },
+                {
+                    type: "file",
+                    file: {
+                        name: fileName,
+                        mime_type: "application/pdf",
+                        data: fileData
+                    }
                 }
             ]
-        });
+        }
+    ]
+});
 
         const raw = completion.choices?.[0]?.message?.content || "";
         const questions = raw
@@ -96,9 +97,12 @@ router.post('/quiz-answer', async (req, res) => {
         const evaluation = await openai.chat.completions.create({
             model: "gpt-4.1",
             messages: [
-                {
-                    role: "user",
-                    content: `
+    {
+        role: "user",
+        content: [
+            {
+                type: "text",
+                text: `
 Evaluate the user's answer.
 
 Question: ${question}
@@ -109,9 +113,12 @@ Respond in JSON with:
   "correct": true/false,
   "explanation": "1-2 sentence explanation"
 }
-                    `
-                }
-            ]
+                `
+            }
+        ]
+    }
+]
+
         });
 
         let result;

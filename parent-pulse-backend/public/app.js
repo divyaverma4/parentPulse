@@ -341,10 +341,8 @@ async startQuizFromPDF(pdfUrl) {
     this.showTypingIndicator();
 
     try {
-        // Fetch the PDF as a Blob
         const pdfBlob = await fetch(pdfUrl).then(r => r.blob());
 
-        // Convert to Base64 for sending to your backend
         const base64PDF = await new Promise((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result.split(',')[1]);
@@ -366,7 +364,14 @@ async startQuizFromPDF(pdfUrl) {
         const data = await response.json();
 
         this.hideTypingIndicator();
-        this.addMessage(data.response || "Quiz started.", "bot");
+
+        // 🔥 FIXED: properly start quiz
+        if (data.quizId && data.question) {
+            this.currentQuizId = data.quizId;
+            this.addMessage(data.question, "bot");
+        } else {
+            this.addMessage("Unable to start quiz.", "bot");
+        }
 
     } catch (err) {
         this.hideTypingIndicator();
@@ -374,6 +379,7 @@ async startQuizFromPDF(pdfUrl) {
         console.error(err);
     }
 }
+
 
 
 }
