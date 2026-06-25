@@ -248,16 +248,16 @@ class ChatbotApp {
 
         const detailPrompts = {
             upcoming_tests:
-                'Provide a detailed breakdown of upcoming tests including study recommendations.',
+                'Provide more details.',
 
             upcoming_due:
-                'Provide a detailed breakdown of upcoming assignments and due dates.',
+                'Provide more details.',
 
             lowest_grade:
-                "Provide a detailed analysis of why this is the student's lowest grade and recommendations for improvement.",
+                "Provide more details.",
 
             missing_assignments:
-                'Provide complete details for all missing assignments.'
+                'Provide more details.'
         };
 
         const studentId = this.studentIdInput.value.trim();
