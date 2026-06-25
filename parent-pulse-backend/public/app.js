@@ -341,31 +341,28 @@ async startQuizFromPDF(pdfUrl) {
     this.showTypingIndicator();
 
     try {
+        // Fetch the PDF as a Blob
         const pdfBlob = await fetch(pdfUrl).then(r => r.blob());
 
-        const base64PDF = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result.split(',')[1]);
-            reader.readAsDataURL(pdfBlob);
-        });
+        // Build multipart/form-data request
+        const form = new FormData();
+        form.append(
+            "prompt",
+            "Using this PDF, quiz me on the material. Ask me questions one by one and assess my answer."
+        );
+        form.append("file", pdfBlob, "report.pdf");
 
-        const body = {
-            prompt: "Using this PDF, quiz me on the material. Ask me questions one by one and assess my answer.",
-            fileName: "report.pdf",
-            fileData: base64PDF
-        };
-
+        // Send to backend
         const response = await fetch(`${this.apiBaseUrl}/api/chat/quiz-from-pdf`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
+            body: form
         });
 
         const data = await response.json();
 
         this.hideTypingIndicator();
 
-        // 🔥 FIXED: properly start quiz
+        // Start quiz properly
         if (data.quizId && data.question) {
             this.currentQuizId = data.quizId;
             this.addMessage(data.question, "bot");
