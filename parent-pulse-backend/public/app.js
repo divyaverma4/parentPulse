@@ -246,60 +246,45 @@ class ChatbotApp {
 
     async loadMoreDetails(parentMessage, kind) {
 
-        //const detailPrompts = {
-        //    upcoming_tests:
-        //        'Provide more details.',
+    const studentId = this.studentIdInput.value.trim();
 
-        //    upcoming_due:
-        //        'Provide more details.',
+    try {
+        // If you don't want to call the API, just define a placeholder
+        const response = "Here is your detailed report. You can download the PDF below.";
 
-        //    lowest_grade:
-        //        "Provide more details.",
+        const detailsDiv = document.createElement('div');
+        detailsDiv.className = 'more-details-content';
 
-        //    missing_assignments:
-        //        'Provide more details.'
-        //};
+        const pdfUrl = `socialstudies.pdf`;
 
-        const studentId = this.studentIdInput.value.trim();
+        detailsDiv.innerHTML = `
+            <div style="margin-top:10px;">
+                <strong>Additional Details</strong>
+                <p>${response}</p>
 
-        try {
-            //const response = await this.callChatAPI(
-            //    detailPrompts[kind],
-            //    studentId
-            //);
-
-            const detailsDiv = document.createElement('div');
-            detailsDiv.className = 'more-details-content';
-
-            const pdfUrl = `socialstudies.pdf`;
-
-            detailsDiv.innerHTML = `
-                <div style="margin-top:10px;">
-                    <strong>Additional Details</strong>
-                    <p>${response}</p>
-
-                    <div class="pdf-attachment">
-                        📄 <a href="${pdfUrl}" target="_blank" download>
-                            Download PDF Report
-                        </a>
-                    </div>
+                <div class="pdf-attachment">
+                    📄 <a href="${pdfUrl}" target="_blank" download>
+                        Download PDF Report
+                    </a>
                 </div>
-            `;
+            </div>
+        `;
 
-            parentMessage.appendChild(detailsDiv);
+        parentMessage.appendChild(detailsDiv);
 
-            const btn = parentMessage.querySelector('.more-details-btn');
+        const btn = parentMessage.querySelector('.more-details-btn');
 
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = 'Details Loaded';
-            }
-
-        } catch (error) {
-            console.error(error);
-            this.showError('Unable to load additional details.');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Details Loaded';
         }
+
+    } catch (error) {
+        console.error(error);
+        this.showError('Unable to load additional details.');
     }
+}
+
 }
 
 document.addEventListener('DOMContentLoaded', () => {
