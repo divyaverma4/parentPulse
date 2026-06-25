@@ -25,7 +25,6 @@ class ChatbotApp {
             }
         });
 
-        // Dark mode — restore saved preference
         const saved = localStorage.getItem('theme');
         if (saved === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -33,20 +32,16 @@ class ChatbotApp {
         }
         this.darkToggle.addEventListener('click', () => this.toggleDarkMode());
 
-        // Action buttons
         if (this.btnUpcomingTests) this.btnUpcomingTests.addEventListener('click', () => this.sendPreset('upcoming_tests'));
         if (this.btnUpcomingDue) this.btnUpcomingDue.addEventListener('click', () => this.sendPreset('upcoming_due'));
         if (this.btnLowestGrade) this.btnLowestGrade.addEventListener('click', () => this.sendPreset('lowest_grade'));
         if (this.btnMissing) this.btnMissing.addEventListener('click', () => this.sendPreset('missing_assignments'));
 
-        // Auto-focus input on mobile
         if ('ontouchstart' in window) {
             this.messageInput.focus();
         }
 
         this.handleViewportHeight();
-
-        
     }
 
     toggleDarkMode() {
@@ -71,8 +66,8 @@ class ChatbotApp {
         const studentId = this.studentIdInput.value.trim();
 
         if (!message) return;
-        if (!studentId) {
-            this.showError('Please enter a Student ID');
+        if (!studentId || isNaN(parseInt(studentId))) {
+            this.showError('Please enter a valid Student ID');
             return;
         }
 
@@ -119,15 +114,40 @@ class ChatbotApp {
         return data.response || data.answer || data.message || data.error || 'I received your message but couldn\'t generate a response.';
     }
 
-    addMessage(content, sender) {
+    addMessage(content, sender, options = {}) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}-message`;
 
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
-        contentDiv.textContent = content;
+
+        // FIX: bot messages can contain HTML (needed for PDF/details)
+        if (sender === 'bot') {
+            contentDiv.innerHTML = content;
+        } else {
+            contentDiv.textContent = content;
+        }
 
         messageDiv.appendChild(contentDiv);
+
+        if (sender === 'bot' && options.showMoreDetails) {
+            const detailsBtn = document.createElement('button');
+            detailsBtn.className = 'more-details-btn';
+            detailsBtn.textContent = 'More Details';
+
+            detailsBtn.addEventListener('click', async () => {
+                detailsBtn.disabled = true; // FIX: prevent double-click
+                try {
+                    await this.loadMoreDetails(messageDiv, options.kind);
+                } catch (err) {
+                    detailsBtn.disabled = false;
+                    throw err;
+                }
+            });
+
+            messageDiv.appendChild(detailsBtn);
+        }
+
         this.messagesContainer.appendChild(messageDiv);
         this.scrollToBottom();
     }
@@ -180,8 +200,8 @@ class ChatbotApp {
 
     async sendPreset(kind) {
         const studentId = this.studentIdInput.value.trim();
-        if (!studentId) {
-            this.showError('Please enter a Student ID');
+        if (!studentId || isNaN(parseInt(studentId))) {
+            this.showError('Please enter a valid Student ID');
             return;
         }
 
@@ -194,7 +214,6 @@ class ChatbotApp {
 
         const question = prompts[kind] || 'Please summarize the student status.';
 
-        // fetch sample report from public endpoint
         let report = null;
         try {
             const r = await fetch('/sampleReport.json');
@@ -210,8 +229,13 @@ class ChatbotApp {
         try {
             const response = await this.callChatAPI(question, studentId, report);
             this.hideTypingIndicator();
-            this.addMessage(response, 'bot');
-        } catch (err) {
+
+            this.addMessage(response, 'bot', {
+                showMoreDetails: true,
+                kind: kind
+            });
+        }
+        catch (err) {
             this.hideTypingIndicator();
             this.showError('Sorry, I encountered an error. Please try again.');
             console.error('Preset API error:', err);
@@ -220,29 +244,60 @@ class ChatbotApp {
         this.setInputDisabled(false);
     }
 
-    async uploadReport() {
-        if (!this.reportFileInput || !this.reportFileInput.files || this.reportFileInput.files.length === 0) {
-            this.uploadStatus.textContent = 'Select a JSON file first.';
-            return;
-        }
+    async loadMoreDetails(parentMessage, kind) {
 
-        const file = this.reportFileInput.files[0];
+        const detailPrompts = {
+            upcoming_tests:
+                'Provide a detailed breakdown of upcoming tests including study recommendations.',
+
+            upcoming_due:
+                'Provide a detailed breakdown of upcoming assignments and due dates.',
+
+            lowest_grade:
+                "Provide a detailed analysis of why this is the student's lowest grade and recommendations for improvement.",
+
+            missing_assignments:
+                'Provide complete details for all missing assignments.'
+        };
+
+        const studentId = this.studentIdInput.value.trim();
+
         try {
-            const text = await file.text();
-            const json = JSON.parse(text);
+            const response = await this.callChatAPI(
+                detailPrompts[kind],
+                studentId
+            );
 
-            this.uploadStatus.textContent = 'Uploading...';
-            const res = await fetch('/api/report/upload', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(json)
-            });
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'more-details-content';
 
-            if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-            this.uploadStatus.textContent = 'Upload successful — buttons will use the new report.';
-        } catch (err) {
-            console.error('Upload error', err);
-            this.uploadStatus.textContent = 'Upload failed: ' + (err.message || err);
+            const pdfUrl = `socialstudies.pdf`;
+
+            detailsDiv.innerHTML = `
+                <div style="margin-top:10px;">
+                    <strong>Additional Details</strong>
+                    <p>${response}</p>
+
+                    <div class="pdf-attachment">
+                        📄 <a href="${pdfUrl}" target="_blank" download>
+                            Download PDF Report
+                        </a>
+                    </div>
+                </div>
+            `;
+
+            parentMessage.appendChild(detailsDiv);
+
+            const btn = parentMessage.querySelector('.more-details-btn');
+
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Details Loaded';
+            }
+
+        } catch (error) {
+            console.error(error);
+            this.showError('Unable to load additional details.');
         }
     }
 }
@@ -256,4 +311,3 @@ if ('serviceWorker' in navigator) {
         // navigator.serviceWorker.register('/sw.js');
     });
 }
-    
