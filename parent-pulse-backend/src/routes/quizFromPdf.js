@@ -12,7 +12,13 @@ router.post('/quiz-from-pdf', async (req, res) => {
             return res.status(400).json({ error: "Missing required fields." });
         }
 
-        // Correct OpenAI request format
+        // 1️⃣ Upload the PDF to OpenAI
+        const uploaded = await openai.files.create({
+            file: Buffer.from(fileData, "base64"),
+            purpose: "assistants"
+        });
+
+        // 2️⃣ Use file_id in the chat request
         const completion = await openai.chat.completions.create({
             model: "gpt-4.1",
             messages: [
@@ -25,11 +31,7 @@ router.post('/quiz-from-pdf', async (req, res) => {
                         },
                         {
                             type: "file",
-                            file: {
-                                name: fileName,
-                                mime_type: "application/pdf",
-                                data: fileData
-                            }
+                            file_id: uploaded.id
                         }
                     ]
                 }
