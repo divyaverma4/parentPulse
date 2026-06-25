@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import chatRoutes from './routes/chat.js';
 import reportsRoutes from './routes/reports.js';
+import quizFromPdfRoutes from './routes/quizFromPdf.js';
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/chat', chatRoutes);
 // Report upload / retrieval
 app.use('/api/report', reportsRoutes);
+app.use('/api/chat', quizFromPdfRoutes);
 
 // Root endpoint - serve the frontend
 app.get('/', (req, res) => {
