@@ -249,13 +249,11 @@ class ChatbotApp {
     const studentId = this.studentIdInput.value.trim();
 
     try {
-        // If you don't want to call the API, just define a placeholder
         const response = "Here is your detailed report. You can download the PDF below.";
+        const pdfUrl = `socialstudies.pdf`;
 
         const detailsDiv = document.createElement('div');
         detailsDiv.className = 'more-details-content';
-
-        const pdfUrl = `socialstudies.pdf`;
 
         detailsDiv.innerHTML = `
             <div style="margin-top:10px;">
@@ -267,16 +265,34 @@ class ChatbotApp {
                         Download PDF Report
                     </a>
                 </div>
+
+                <button class="quiz-me-btn" style="
+                    margin-top:12px;
+                    padding:8px 14px;
+                    border-radius:6px;
+                    background:#4a6cf7;
+                    color:white;
+                    border:none;
+                    cursor:pointer;
+                ">
+                    Quiz Me
+                </button>
             </div>
         `;
 
         parentMessage.appendChild(detailsDiv);
 
+        // Disable the "More Details" button
         const btn = parentMessage.querySelector('.more-details-btn');
-
         if (btn) {
             btn.disabled = true;
             btn.textContent = 'Details Loaded';
+        }
+
+        // Attach quiz button handler
+        const quizBtn = detailsDiv.querySelector('.quiz-me-btn');
+        if (quizBtn) {
+            quizBtn.addEventListener('click', () => this.startQuizFromPDF(pdfUrl));
         }
 
     } catch (error) {
@@ -284,6 +300,46 @@ class ChatbotApp {
         this.showError('Unable to load additional details.');
     }
 }
+
+async startQuizFromPDF(pdfUrl) {
+    this.addMessage("Starting quiz based on the PDF…", "bot");
+    this.showTypingIndicator();
+
+    try {
+        // Fetch the PDF as a Blob
+        const pdfBlob = await fetch(pdfUrl).then(r => r.blob());
+
+        // Convert to Base64 for sending to your backend
+        const base64PDF = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result.split(',')[1]);
+            reader.readAsDataURL(pdfBlob);
+        });
+
+        const body = {
+            prompt: "Using this PDF, quiz me on the material. Ask me questions one by one and assess my answer.",
+            fileName: "report.pdf",
+            fileData: base64PDF
+        };
+
+        const response = await fetch(`${this.apiBaseUrl}/api/chat/quiz-from-pdf`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+
+        const data = await response.json();
+
+        this.hideTypingIndicator();
+        this.addMessage(data.response || "Quiz started.", "bot");
+
+    } catch (err) {
+        this.hideTypingIndicator();
+        this.showError("Unable to start quiz.");
+        console.error(err);
+    }
+}
+
 
 }
 
