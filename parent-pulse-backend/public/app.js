@@ -246,27 +246,27 @@ class ChatbotApp {
 
     async loadMoreDetails(parentMessage, kind) {
 
-        const detailPrompts = {
-            upcoming_tests:
-                'Provide more details.',
+        //const detailPrompts = {
+        //    upcoming_tests:
+        //        'Provide more details.',
 
-            upcoming_due:
-                'Provide more details.',
+        //    upcoming_due:
+        //        'Provide more details.',
 
-            lowest_grade:
-                "Provide more details.",
+        //    lowest_grade:
+        //        "Provide more details.",
 
-            missing_assignments:
-                'Provide more details.'
-        };
+        //    missing_assignments:
+        //        'Provide more details.'
+        //};
 
         const studentId = this.studentIdInput.value.trim();
 
         try {
-            const response = await this.callChatAPI(
-                detailPrompts[kind],
-                studentId
-            );
+            //const response = await this.callChatAPI(
+            //    detailPrompts[kind],
+            //    studentId
+            //);
 
             const detailsDiv = document.createElement('div');
             detailsDiv.className = 'more-details-content';

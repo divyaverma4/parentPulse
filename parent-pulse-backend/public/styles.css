@@ -231,39 +231,6 @@ body {
     border-radius: 6px;
 }
 
-#chat-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 10px;
-    margin-top: 10px;
-    justify-content: center;
-    border-top: 1px solid var(--border-color, #ddd);
-}
-
-.action-btn {
-    flex: 1 1 calc(50% - 10px);
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    background: var(--accent-color, #4a90e2);
-    color: white;
-    transition: background 0.2s ease;
-}
-
-.action-btn:hover {
-    background: var(--accent-color-hover, #3a78c2);
-}
-
-[data-theme="dark"] .action-btn {
-    background: var(--accent-color-dark, #5aa0ff);
-}
-
-[data-theme="dark"] .action-btn:hover {
-    background: var(--accent-color-dark-hover, #4788e0);
-}
 
 
 #message-input:focus {
