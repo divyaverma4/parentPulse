@@ -5,7 +5,7 @@ import path from 'path';
 const router = express.Router();
 
 const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
-const SAMPLE_REPORT_FILE = path.join(PUBLIC_DIR, 'sampleReport.json');
+const SAMPLE_REPORT_FILE = path.join(JSON_DIR, 'sampleReport.json');
 const SAMIR_GRADES_FILE = path.join(PUBLIC_DIR, 'grades_samir.json');
 
 router.get('/latest', async (req, res) => {
