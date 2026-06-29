@@ -272,6 +272,30 @@ function detectExtremeMode(question) {
 }
 
 /**
+ * Decide whether an extreme question is about a whole class ("which class has the
+ * lowest grade?") or a single assignment ("what's his lowest grade?").
+ */
+function detectExtremeScope(question) {
+  return /\b(class|course|subject)\b/i.test(question) ? 'course' : 'assignment';
+}
+
+/**
+ * Deterministically find the lowest- or highest-scoring course by overall percentage.
+ */
+async function computeExtremeCourse(grades, mode = 'lowest') {
+  const rows = await buildCourseBreakdown(grades || []);
+  const valid = rows.filter(r => r.overallPercentage != null);
+  if (valid.length === 0) return null;
+
+  valid.sort((a, b) =>
+    mode === 'lowest'
+      ? Number(a.overallPercentage) - Number(b.overallPercentage)
+      : Number(b.overallPercentage) - Number(a.overallPercentage)
+  );
+  return valid[0];
+}
+
+/**
  * Deterministically find the lowest- or highest-scoring assignment (by percentage).
  * Exact min/max selection belongs in code, not the LLM, which is unreliable at it.
  */
@@ -588,6 +612,40 @@ if (report) {
         // Lowest/highest is an exact min/max lookup: compute it in code, not the LLM.
         const extremeMode = detectExtremeMode(userQuestion);
         if (extremeMode) {
+          // Course-level question, e.g. "which class has the lowest overall grade?"
+          if (detectExtremeScope(userQuestion) === 'course') {
+            const courseExtreme = await computeExtremeCourse(averageData.allGrades, extremeMode);
+
+            if (!courseExtreme) {
+              return {
+                question: userQuestion,
+                response: `No graded courses found to determine the ${extremeMode} overall grade.`,
+                overallPercentage: averageData.overallPercentage,
+                context: averageData,
+                allGrades: averageData.allGrades,
+                dataUsed: ['grades'],
+                apiCall: 'SPECIFIC_GRADE_QUERY'
+              };
+            }
+
+            const gpaPart = courseExtreme.averageGrade != null
+              ? ` (GPA ${courseExtreme.averageGrade}, ${courseExtreme.letterGrade})`
+              : '';
+            const response = `The ${extremeMode} overall grade is in ${courseExtreme.courseLabel}: ` +
+              `${courseExtreme.overallPercentage}%${gpaPart}, based on ` +
+              `${courseExtreme.gradedAssignments}/${courseExtreme.totalAssignments} assignments.`;
+
+            return {
+              question: userQuestion,
+              response,
+              overallPercentage: averageData.overallPercentage,
+              context: { ...averageData, extremeCourse: { mode: extremeMode, ...courseExtreme } },
+              allGrades: averageData.allGrades,
+              dataUsed: ['grades'],
+              apiCall: 'SPECIFIC_GRADE_QUERY'
+            };
+          }
+
           const extreme = computeExtremeAssignment(averageData.allGrades, extremeMode);
 
           if (!extreme) {
