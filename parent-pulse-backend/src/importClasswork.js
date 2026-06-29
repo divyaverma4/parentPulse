@@ -9,13 +9,16 @@ const DRY_RUN = false;
 function fakeId(prefix) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
+
 function normalizeExamDate(dateStr, year = 2026) {
-  // dateStr like "10/28"
   const [month, day] = dateStr.split("/");
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
 
-
+/* -------------------------------------------------------
+   SAFE insertRow — logs errors but DOES NOT throw
+   (prevents importer from dying early)
+--------------------------------------------------------*/
 async function insertRow(table, payload) {
   if (DRY_RUN) {
     const fake = { id: fakeId(table) };
@@ -26,12 +29,13 @@ async function insertRow(table, payload) {
   const { data, error } = await supabase.from(table).insert(payload).select();
 
   if (error) {
-    console.error(`❌ Insert failed for table "${table}"`, error);
-    throw error;
+    console.error(`⚠ Insert failed for table "${table}" — skipping row`, error);
+    return null; // <-- DO NOT THROW
   }
 
   if (!data || data.length === 0) {
-    throw new Error(`❌ Insert returned no data for table "${table}". Table may not exist.`);
+    console.error(`⚠ Insert returned no data for table "${table}" — skipping row`);
+    return null;
   }
 
   return data[0];
@@ -64,6 +68,11 @@ export async function importDailyLog(fileName) {
       day: entry.day
     });
 
+    if (!entryRow) {
+      console.error("⚠ Skipping entire entry due to failed daily_entries insert");
+      continue;
+    }
+
     // 2. SUBJECTS + TEACHERS
     for (const [subjectName, subjectData] of Object.entries(entry.subjects || {})) {
       const subjectRow = await insertRow("subjects", {
@@ -71,15 +80,16 @@ export async function importDailyLog(fileName) {
         subject_name: subjectName
       });
 
-      // subjectData may be:
-      // - an object of teachers
-      // - OR a single teacher-less subject (today/homework/upcoming/other)
+      if (!subjectRow) {
+        console.error(`⚠ Skipping subject "${subjectName}"`);
+        continue;
+      }
+
       const isTeacherMap =
         typeof subjectData === "object" &&
         Object.values(subjectData).every(v => typeof v === "object");
 
       if (isTeacherMap) {
-        // Multiple teachers
         for (const [teacherName, teacherInfo] of Object.entries(subjectData)) {
           await insertRow("subject_teachers", {
             subject_id: subjectRow.id,
@@ -91,7 +101,6 @@ export async function importDailyLog(fileName) {
           });
         }
       } else {
-        // Single teacher-less subject (Pre-Algebra, Religion, etc.)
         await insertRow("subject_teachers", {
           subject_id: subjectRow.id,
           teacher_name: null,
@@ -113,15 +122,14 @@ export async function importDailyLog(fileName) {
 
     // 4. EXAM SCHEDULE
     for (const [examDate, subject] of Object.entries(entry.exam_schedule || {})) {
-  const normalized = normalizeExamDate(examDate);
+      const normalized = normalizeExamDate(examDate);
 
-  await insertRow("exam_schedule", {
-    entry_id: entryRow.id,
-    exam_date: normalized,
-    subject
-  });
-}
-
+      await insertRow("exam_schedule", {
+        entry_id: entryRow.id,
+        exam_date: normalized,
+        subject
+      });
+    }
   }
 
   console.log("\n🎉 Daily log import complete");
@@ -135,8 +143,8 @@ if (process.argv[1].includes("importClasswork.js")) {
     console.error("   node importClasswork.js sampleReport.json");
     process.exit(1);
   }
-  importDailyLog(fileArg).catch(err => {
-  console.error("❌ Import failed:", err);
-});
 
+  importDailyLog(fileArg).catch(err => {
+    console.error("❌ Import failed:", err);
+  });
 }
