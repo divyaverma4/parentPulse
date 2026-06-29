@@ -85,5 +85,55 @@ export async function initSchema() {
     );
   `);
 
+  // Daily entry (one per date)
+  await runSQL(`
+    CREATE TABLE IF NOT EXISTS daily_entries (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      date date,
+      day text
+    );
+  `);
+
+  // Subjects inside each daily entry
+  await runSQL(`
+    CREATE TABLE IF NOT EXISTS subjects (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      entry_id uuid REFERENCES daily_entries(id),
+      subject_name text
+    );
+  `);
+
+  // Teachers inside each subject
+  await runSQL(`
+    CREATE TABLE IF NOT EXISTS subject_teachers (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      subject_id uuid REFERENCES subjects(id),
+      teacher_name text,
+      today text,
+      homework text,
+      upcoming text,
+      other text
+    );
+  `);
+
+  // Upcoming dates list
+  await runSQL(`
+    CREATE TABLE IF NOT EXISTS upcoming_dates (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      entry_id uuid REFERENCES daily_entries(id),
+      description text
+    );
+  `);
+
+  // Exam schedule
+  await runSQL(`
+    CREATE TABLE IF NOT EXISTS exam_schedule (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      entry_id uuid REFERENCES daily_entries(id),
+      exam_date date,
+      subject text
+    );
+  `);
+
   console.log("✅ Schema ready");
 }
