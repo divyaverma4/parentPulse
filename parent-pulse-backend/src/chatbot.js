@@ -265,6 +265,43 @@ function extractDateRange(question) {
   return null;
 }
 
+function detectExtremeMode(question) {
+  if (/\b(lowest|worst|bottom|weakest|poorest)\b/i.test(question)) return 'lowest';
+  if (/\b(highest|best|top|strongest)\b/i.test(question)) return 'highest';
+  return null;
+}
+
+/**
+ * Deterministically find the lowest- or highest-scoring assignment (by percentage).
+ * Exact min/max selection belongs in code, not the LLM, which is unreliable at it.
+ */
+function computeExtremeAssignment(grades, mode = 'lowest') {
+  const valid = (grades || [])
+    .filter(g =>
+      !g.excused &&
+      !g.missing &&
+      g.score != null &&
+      Number(g.assignments?.points_possible) > 0
+    )
+    .map(g => {
+      const max = Number(g.assignments.points_possible);
+      const score = Number(g.score);
+      return {
+        name: g.assignments?.name || 'Unknown assignment',
+        score,
+        max,
+        pct: (score / max) * 100,
+        courseLabel: getCourseLabelFromGrade(g),
+        due: g.assignments?.due_at ? String(g.assignments.due_at).slice(0, 10) : null
+      };
+    });
+
+  if (valid.length === 0) return null;
+
+  valid.sort((a, b) => (mode === 'lowest' ? a.pct - b.pct : b.pct - a.pct));
+  return valid[0];
+}
+
 function buildAssignmentListContext(grades, courseLabel) {
   let context = courseLabel ? `Course: ${courseLabel}\n\n` : '';
   context += 'Assignment List (only graded, non-excused, non-missing):\n';
@@ -547,6 +584,41 @@ if (report) {
 
       if (asksSpecificAssignment && !asksAllCoursesBreakdown) {
         const courseLabel = matchedCourse ? getCourseLabelFromEnrollment(matchedCourse) : null;
+
+        // Lowest/highest is an exact min/max lookup: compute it in code, not the LLM.
+        const extremeMode = detectExtremeMode(userQuestion);
+        if (extremeMode) {
+          const extreme = computeExtremeAssignment(averageData.allGrades, extremeMode);
+
+          if (!extreme) {
+            return {
+              question: userQuestion,
+              response: `No graded assignments found${courseLabel ? ` for ${courseLabel}` : ''} to determine the ${extremeMode} grade.`,
+              overallPercentage: averageData.overallPercentage,
+              context: averageData,
+              allGrades: averageData.allGrades,
+              dataUsed: ['grades'],
+              apiCall: 'SPECIFIC_GRADE_QUERY'
+            };
+          }
+
+          const duePart = extreme.due ? `, due ${extreme.due}` : '';
+          const response = `The ${extremeMode} grade is "${extreme.name}" in ${extreme.courseLabel}: ` +
+            `${extreme.score}/${extreme.max} (${extreme.pct.toFixed(1)}%)${duePart}.`;
+
+          return {
+            question: userQuestion,
+            response,
+            overallPercentage: averageData.overallPercentage,
+            context: { ...averageData, extreme: { mode: extremeMode, ...extreme } },
+            allGrades: averageData.allGrades,
+            dataUsed: ['grades'],
+            apiCall: 'SPECIFIC_GRADE_QUERY'
+          };
+        }
+
+        // Open-ended specific-assignment questions (e.g. "how did he do on the unit test?")
+        // still go through the LLM, which only has to locate/paraphrase a named item.
         const detailedContext = buildAssignmentListContext(averageData.allGrades, courseLabel);
         const aiResponse = await generateResponse(
   userQuestion,
