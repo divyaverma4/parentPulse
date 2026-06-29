@@ -2,12 +2,16 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 
-const JSON_DIR = path.join(process.cwd(), "jsonData");
 const router = express.Router();
+
+// Serve everything from /public
 const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
-const SAMPLE_REPORT_FILE = path.join(JSON_DIR, 'sampleReport.json');
+
+// Store BOTH JSON files in public so the frontend can fetch them
+const SAMPLE_REPORT_FILE = path.join(PUBLIC_DIR, 'sampleReport.json');
 const SAMIR_GRADES_FILE = path.join(PUBLIC_DIR, 'grades_samir.json');
 
+// GET /api/reports/latest
 router.get('/latest', async (req, res) => {
   try {
     const response = {};
@@ -28,7 +32,6 @@ router.get('/latest', async (req, res) => {
       response.gradesSamir = null;
     }
 
-    // If both missing → 404
     if (!response.sampleReport && !response.gradesSamir) {
       return res.status(404).json({ error: 'No report files found' });
     }
@@ -41,7 +44,7 @@ router.get('/latest', async (req, res) => {
   }
 });
 
-// Upload endpoint (unchanged)
+// POST /api/reports/upload
 router.post('/upload', async (req, res) => {
   try {
     const UPLOAD_KEY = process.env.REPORT_UPLOAD_KEY;
@@ -58,6 +61,8 @@ router.post('/upload', async (req, res) => {
     }
 
     const out = JSON.stringify(report, null, 2);
+
+    // Save into PUBLIC so frontend can fetch it
     await fs.promises.writeFile(SAMPLE_REPORT_FILE, out, 'utf-8');
 
     res.json({ ok: true, path: '/sampleReport.json' });
