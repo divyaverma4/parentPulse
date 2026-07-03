@@ -345,98 +345,121 @@ export function convertScoreToGPA(score, pointsPossible = null) {
   return 0.0;
 }
 
-/**
- * Calculate average grade from letter grades or numeric score fallback.
- */
 export function calculateAverageGrade(grades) {
-  console.log('\n[calculateAverageGrade] ========== START ==========');
-  console.log('[calculateAverageGrade] Input: grades.length =', grades.length);
-  
-  // Log why each grade is being filtered
-  grades.forEach((g, idx) => {
-    console.log(`[calculateAverageGrade] Record ${idx}: excused=${g.excused}, missing=${g.missing}`);
-    if (g.excused || g.missing) {
-      console.log(`[calculateAverageGrade]   -> FILTERED OUT (excused or missing)`);
-    }
-  });
-  
+  console.log('\n[calculateAverageGrade] START');
+  if (!Array.isArray(grades) || grades.length === 0) {
+    console.log('[calculateAverageGrade] No grades array provided');
+    return null;
+  }
+
+  // Filter out excused or missing
   const filtered = grades.filter(g => !(g.excused || g.missing));
-  console.log('[calculateAverageGrade] After excused/missing filter:', filtered.length, 'remaining');
-  
-  const numericGrades = filtered
-    .map((g, idx) => {
-      const hasGrade = g.grade && g.grade.trim() !== '';
-      const hasScore = g.score != null;
-      const hasAssignments = !!g.assignments;
-      console.log(`[calculateAverageGrade] Processing ${idx}: grade="${g.grade}" (has=${hasGrade}), score=${g.score} (has=${hasScore}), assignments=${hasAssignments}`);
-      
-      if (hasGrade) {
-        const gpa = convertGradeToGPA(g.grade);
-        console.log(`[calculateAverageGrade]   -> Using letter grade: "${g.grade}" -> GPA ${gpa}`);
-        return gpa;
+  console.log('[calculateAverageGrade] After filtering:', filtered.length);
+
+  const numericGrades = [];
+
+  for (const g of filtered) {
+    try {
+      const gradeStr = g.grade?.trim();
+      const score = g.score;
+      const pointsPossibleRaw = g.assignments?.points_possible;
+
+      // Normalize points_possible
+      const pointsPossible = Number(pointsPossibleRaw);
+      const validPoints = !Number.isNaN(pointsPossible) && pointsPossible > 0;
+
+      // Case 1: Letter or percentage grade exists
+      if (gradeStr) {
+        const gpa = convertGradeToGPA(gradeStr);
+        if (gpa != null) {
+          numericGrades.push(gpa);
+          continue;
+        }
       }
 
-      if (hasScore) {
-        const pointsPossible = g.assignments?.points_possible || null;
-        const gpa = convertScoreToGPA(g.score, pointsPossible);
-        console.log(`[calculateAverageGrade]   -> Using score fallback: ${g.score}/${pointsPossible} -> GPA ${gpa}`);;
-        return gpa;
+      // Case 2: Score fallback
+      if (score != null) {
+        const gpa = validPoints
+          ? convertScoreToGPA(score, pointsPossible)
+          : convertScoreToGPA(score);
+
+        if (gpa != null) {
+          numericGrades.push(gpa);
+          continue;
+        }
       }
 
-      console.log(`[calculateAverageGrade]   -> FILTERED OUT (no grade and no score)`);
-      return null;
-    })
-    .filter(g => g !== null);
+      // Otherwise skip silently
+      console.log('[calculateAverageGrade] Skipping invalid grade row');
+    } catch (err) {
+      console.log('[calculateAverageGrade] Error processing row:', err);
+      continue;
+    }
+  }
 
-  console.log('[calculateAverageGrade] After mapping/filtering: numericGrades.length =', numericGrades.length);
-  console.log('[calculateAverageGrade] numericGrades =', numericGrades);
-  
+  console.log('[calculateAverageGrade] numericGrades:', numericGrades);
+
   if (numericGrades.length === 0) {
-    console.log('[calculateAverageGrade] NO VALID GRADES FOUND - returning null');
-    console.log('[calculateAverageGrade] ========== END (RETURNED NULL) ==========\n');
+    console.log('[calculateAverageGrade] No valid numeric grades found');
     return null;
   }
 
   const avg = numericGrades.reduce((a, b) => a + b, 0) / numericGrades.length;
-  const result = avg.toFixed(2);
-  console.log('[calculateAverageGrade] Average calculated:', result);
-  console.log('[calculateAverageGrade] ========== END (SUCCESS) ==========\n');
+  const result = Number(avg.toFixed(2));
+
+  console.log('[calculateAverageGrade] RESULT:', result);
   return result;
 }
 
-/**
- * Calculate overall percentage grade from all assignments
- */
+
 export function calculateOverallPercentage(grades) {
-  console.log('[calculateOverallPercentage] Starting with', grades.length, 'grades');
-  
+  console.log('[calculateOverallPercentage] START');
+
+  if (!Array.isArray(grades) || grades.length === 0) {
+    console.log('[calculateOverallPercentage] No grades array provided');
+    return null;
+  }
+
   const filtered = grades.filter(g => !(g.excused || g.missing));
-  console.log('[calculateOverallPercentage] After filtering excused/missing:', filtered.length, 'remaining');
-  
+  console.log('[calculateOverallPercentage] After filtering:', filtered.length);
+
   let totalScore = 0;
   let totalPossible = 0;
 
   for (const g of filtered) {
-    const pointsPossible = Number(g.assignments?.points_possible);
-    if (!pointsPossible || pointsPossible <= 0) continue;
+    try {
+      const score = Number(g.score);
+      const pointsPossibleRaw = g.assignments?.points_possible;
+      const pointsPossible = Number(pointsPossibleRaw);
 
-    if (g.score != null) {
-      totalScore += Number(g.score);
-      totalPossible += pointsPossible;
+      const validScore = !Number.isNaN(score);
+      const validPoints = !Number.isNaN(pointsPossible) && pointsPossible > 0;
+
+      if (validScore && validPoints) {
+        totalScore += score;
+        totalPossible += pointsPossible;
+      } else {
+        console.log('[calculateOverallPercentage] Skipping invalid row');
+      }
+    } catch (err) {
+      console.log('[calculateOverallPercentage] Error processing row:', err);
+      continue;
     }
   }
 
-  console.log(`[calculateOverallPercentage] Total: ${totalScore}/${totalPossible}`);
+  console.log(`[calculateOverallPercentage] Totals: ${totalScore}/${totalPossible}`);
 
   if (totalPossible === 0) {
-    console.log('[calculateOverallPercentage] NO VALID SCORES - returning null');
+    console.log('[calculateOverallPercentage] No valid totals found');
     return null;
   }
 
-  const result = ((totalScore / totalPossible) * 100).toFixed(2);
-  console.log('[calculateOverallPercentage] Overall percentage calculated:', result);
-  return result;
+  const percent = ((totalScore / totalPossible) * 100).toFixed(2);
+  console.log('[calculateOverallPercentage] RESULT:', percent);
+
+  return Number(percent);
 }
+
 export function formatContextForOpenAI(contextData) {
   let contextString = 'Student Database Context:\n\n';
 
