@@ -329,7 +329,8 @@ class ChatbotApp {
 
         // Attach quiz button
         const quizBtn = detailsDiv.querySelector('.quiz-me-btn');
-        quizBtn.addEventListener('click', () => this.startQuizFromPDF(pdfUrl));
+        quizBtn.addEventListener('click', () => this.startQuizFromPDF("socialstudies.pdf"));
+
 
     } catch (error) {
         console.error(error);
@@ -338,35 +339,22 @@ class ChatbotApp {
 }
 
 
-async startQuizFromPDF(pdfUrl) {
+async startQuizFromPDF(pdfName) {
     this.addMessage("Starting quiz based on the PDF…", "bot");
     this.showTypingIndicator();
 
     try {
-        // Fetch the PDF as a Blob
-        const pdfBlob = await fetch(pdfUrl).then(r => r.blob());
-
-        // Build multipart/form-data request
-        const form = new FormData();
-        form.append(
-            "prompt",
-            "Using this PDF, quiz me on the material. Ask me questions one by one and assess my answer."
-        );
-        form.append("file", pdfBlob, "report.pdf");
-
-        // Send to backend
-        const response = await fetch(`${this.apiBaseUrl}/api/chat/quiz-from-pdf`, {
+        const response = await fetch(`${this.apiBaseUrl}/api/quiz/from-pdf`, {
             method: "POST",
-            body: form
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pdfName })
         });
 
         const data = await response.json();
-
         this.hideTypingIndicator();
 
-        // Start quiz properly
-        const quizId = data.quizId || data.id;
-        const firstQuestion = data.question || data.response || data.message;
+        const quizId = data.quizId;
+        const firstQuestion = data.question;
 
         if (quizId && firstQuestion) {
             this.currentQuizId = quizId;
@@ -381,6 +369,7 @@ async startQuizFromPDF(pdfUrl) {
         console.error(err);
     }
 }
+
 
 
 
