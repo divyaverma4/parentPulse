@@ -1,4 +1,4 @@
-import { queryContextForQuestion, getStudentInfo, formatContextForOpenAI } from './supabaseClient.js';
+import { queryContextForQuestion, getStudentInfo, formatContextForOpenAI, getStudentTermGrades } from './supabaseClient.js';
 import { generateResponse, generateResponseStream, classifyQuestionIntent, resolveCourseFromQuestionNLP } from './openaiClient.js';
 
 function getCourseLabelFromGrade(grade) {
@@ -99,6 +99,61 @@ function percentToLetterGrade(pct) {
 
 function isTrendQuery(question) {
   return /\b(trend|improv|getting\s+(better|worse)|going\s+(up|down)|declin|progress|over\s+time|throughout|trajectory|how\s+is\s+he\s+doing\s+over)\b/i.test(question);
+}
+
+function termSortKey(title) {
+  const m = String(title).match(/(\d+)/);
+  return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * Compute a grade trend from the authoritative per-term (report-card) grades.
+ * When multiple courses are passed (an all-courses question), grades are
+ * averaged per term before comparing the first term to the last.
+ */
+function computeTermTrend(termRows) {
+  if (!termRows || termRows.length === 0) {
+    return { hasEnoughData: false, count: 0 };
+  }
+
+  const byTerm = new Map();
+  for (const r of termRows) {
+    if (r.term_grade == null || Number.isNaN(Number(r.term_grade))) continue;
+    if (!byTerm.has(r.title)) byTerm.set(r.title, []);
+    byTerm.get(r.title).push(Number(r.term_grade));
+  }
+
+  const terms = [...byTerm.entries()]
+    .map(([title, grades]) => ({
+      title,
+      avg: grades.reduce((s, g) => s + g, 0) / grades.length
+    }))
+    .sort((a, b) => termSortKey(a.title) - termSortKey(b.title));
+
+  if (terms.length < 2) {
+    return { hasEnoughData: false, count: terms.length };
+  }
+
+  const first = terms[0].avg;
+  const last = terms[terms.length - 1].avg;
+  const diff = last - first;
+
+  let direction;
+  if (diff > 1) direction = 'improving';
+  else if (diff < -1) direction = 'declining';
+  else direction = 'steady';
+
+  return {
+    hasEnoughData: true,
+    count: terms.length,
+    terms: terms.map(t => ({ title: t.title, grade: t.avg.toFixed(2) })),
+    firstTerm: terms[0].title,
+    lastTerm: terms[terms.length - 1].title,
+    firstGrade: first.toFixed(2),
+    lastGrade: last.toFixed(2),
+    diff: diff.toFixed(2),
+    direction
+  };
 }
 
 function computeTrend(grades) {
@@ -208,6 +263,67 @@ function extractDateRange(question) {
   }
 
   return null;
+}
+
+function detectExtremeMode(question) {
+  if (/\b(lowest|worst|bottom|weakest|poorest)\b/i.test(question)) return 'lowest';
+  if (/\b(highest|best|top|strongest)\b/i.test(question)) return 'highest';
+  return null;
+}
+
+/**
+ * Decide whether an extreme question is about a whole class ("which class has the
+ * lowest grade?") or a single assignment ("what's his lowest grade?").
+ */
+function detectExtremeScope(question) {
+  return /\b(class|course|subject)\b/i.test(question) ? 'course' : 'assignment';
+}
+
+/**
+ * Deterministically find the lowest- or highest-scoring course by overall percentage.
+ */
+async function computeExtremeCourse(grades, mode = 'lowest') {
+  const rows = await buildCourseBreakdown(grades || []);
+  const valid = rows.filter(r => r.overallPercentage != null);
+  if (valid.length === 0) return null;
+
+  valid.sort((a, b) =>
+    mode === 'lowest'
+      ? Number(a.overallPercentage) - Number(b.overallPercentage)
+      : Number(b.overallPercentage) - Number(a.overallPercentage)
+  );
+  return valid[0];
+}
+
+/**
+ * Deterministically find the lowest- or highest-scoring assignment (by percentage).
+ * Exact min/max selection belongs in code, not the LLM, which is unreliable at it.
+ */
+function computeExtremeAssignment(grades, mode = 'lowest') {
+  const valid = (grades || [])
+    .filter(g =>
+      !g.excused &&
+      !g.missing &&
+      g.score != null &&
+      Number(g.assignments?.points_possible) > 0
+    )
+    .map(g => {
+      const max = Number(g.assignments.points_possible);
+      const score = Number(g.score);
+      return {
+        name: g.assignments?.name || 'Unknown assignment',
+        score,
+        max,
+        pct: (score / max) * 100,
+        courseLabel: getCourseLabelFromGrade(g),
+        due: g.assignments?.due_at ? String(g.assignments.due_at).slice(0, 10) : null
+      };
+    });
+
+  if (valid.length === 0) return null;
+
+  valid.sort((a, b) => (mode === 'lowest' ? a.pct - b.pct : b.pct - a.pct));
+  return valid[0];
 }
 
 function buildAssignmentListContext(grades, courseLabel) {
@@ -433,16 +549,39 @@ if (report) {
       }
 
       if (isTrendQuery(userQuestion)) {
-        const trend = computeTrend(averageData.allGrades);
         const courseLabel = matchedCourse
           ? getCourseLabelFromEnrollment(matchedCourse)
           : 'across all courses';
 
+        // Prefer the authoritative per-term (report-card) grades when available.
+        const termGrades = await getStudentTermGrades(studentUserId, effectiveCourseId);
+        const termTrend = computeTermTrend(termGrades);
+
+        if (termTrend.hasEnoughData) {
+          const sign = parseFloat(termTrend.diff) >= 0 ? '+' : '';
+          const trajectory = termTrend.terms.map(t => `${t.title} ${t.grade}%`).join(' → ');
+          const response = `${courseLabel}: Grade is ${termTrend.direction}. ` +
+            `Term-by-term: ${trajectory}. ` +
+            `That's a ${sign}${termTrend.diff}% change from ${termTrend.firstTerm} to ${termTrend.lastTerm}.`;
+
+          return {
+            question: userQuestion,
+            response,
+            context: { ...averageData, termTrend },
+            allGrades: averageData.allGrades,
+            dataUsed: ['grades'],
+            apiCall: 'TREND_QUERY'
+          };
+        }
+
+        // Fall back to the assignment-based trend when term grades are missing.
+        const trend = computeTrend(averageData.allGrades);
+
         if (!trend.hasEnoughData) {
           return {
             question: userQuestion,
-            response: `Not enough graded assignments to detect a trend yet (need at least 4, currently have ${trend.count}).`,
-            context: { ...averageData, trend },
+            response: `Not enough data to detect a trend yet (need at least 2 graded terms or 4 graded assignments; have ${termTrend.count} term(s) and ${trend.count} assignment(s)).`,
+            context: { ...averageData, trend, termTrend },
             allGrades: averageData.allGrades,
             dataUsed: ['grades'],
             apiCall: 'TREND_QUERY'
@@ -469,6 +608,75 @@ if (report) {
 
       if (asksSpecificAssignment && !asksAllCoursesBreakdown) {
         const courseLabel = matchedCourse ? getCourseLabelFromEnrollment(matchedCourse) : null;
+
+        // Lowest/highest is an exact min/max lookup: compute it in code, not the LLM.
+        const extremeMode = detectExtremeMode(userQuestion);
+        if (extremeMode) {
+          // Course-level question, e.g. "which class has the lowest overall grade?"
+          if (detectExtremeScope(userQuestion) === 'course') {
+            const courseExtreme = await computeExtremeCourse(averageData.allGrades, extremeMode);
+
+            if (!courseExtreme) {
+              return {
+                question: userQuestion,
+                response: `No graded courses found to determine the ${extremeMode} overall grade.`,
+                overallPercentage: averageData.overallPercentage,
+                context: averageData,
+                allGrades: averageData.allGrades,
+                dataUsed: ['grades'],
+                apiCall: 'SPECIFIC_GRADE_QUERY'
+              };
+            }
+
+            const gpaPart = courseExtreme.averageGrade != null
+              ? ` (GPA ${courseExtreme.averageGrade}, ${courseExtreme.letterGrade})`
+              : '';
+            const response = `The ${extremeMode} overall grade is in ${courseExtreme.courseLabel}: ` +
+              `${courseExtreme.overallPercentage}%${gpaPart}, based on ` +
+              `${courseExtreme.gradedAssignments}/${courseExtreme.totalAssignments} assignments.`;
+
+            return {
+              question: userQuestion,
+              response,
+              overallPercentage: averageData.overallPercentage,
+              context: { ...averageData, extremeCourse: { mode: extremeMode, ...courseExtreme } },
+              allGrades: averageData.allGrades,
+              dataUsed: ['grades'],
+              apiCall: 'SPECIFIC_GRADE_QUERY'
+            };
+          }
+
+          const extreme = computeExtremeAssignment(averageData.allGrades, extremeMode);
+
+          if (!extreme) {
+            return {
+              question: userQuestion,
+              response: `No graded assignments found${courseLabel ? ` for ${courseLabel}` : ''} to determine the ${extremeMode} grade.`,
+              overallPercentage: averageData.overallPercentage,
+              context: averageData,
+              allGrades: averageData.allGrades,
+              dataUsed: ['grades'],
+              apiCall: 'SPECIFIC_GRADE_QUERY'
+            };
+          }
+
+          const duePart = extreme.due ? `, due ${extreme.due}` : '';
+          const response = `The ${extremeMode} grade is "${extreme.name}" in ${extreme.courseLabel}: ` +
+            `${extreme.score}/${extreme.max} (${extreme.pct.toFixed(1)}%)${duePart}.`;
+
+          return {
+            question: userQuestion,
+            response,
+            overallPercentage: averageData.overallPercentage,
+            context: { ...averageData, extreme: { mode: extremeMode, ...extreme } },
+            allGrades: averageData.allGrades,
+            dataUsed: ['grades'],
+            apiCall: 'SPECIFIC_GRADE_QUERY'
+          };
+        }
+
+        // Open-ended specific-assignment questions (e.g. "how did he do on the unit test?")
+        // still go through the LLM, which only has to locate/paraphrase a named item.
         const detailedContext = buildAssignmentListContext(averageData.allGrades, courseLabel);
         const aiResponse = await generateResponse(
   userQuestion,

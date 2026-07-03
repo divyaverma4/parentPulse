@@ -88,7 +88,9 @@ async function importGrades() {
           course_id: courseRow.id,
           title: termLabel,
           start_date: "2024-01-01",
-          end_date: "2024-12-31"
+          end_date: "2024-12-31",
+          term_grade: termData.termGrade ?? null,
+          letter_grade: termData.letterGrade ?? null
         });
 
         // 6. ASSIGNMENTS

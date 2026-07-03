@@ -15,91 +15,35 @@ const quizSessions = {};
 
 router.post('/quiz-from-pdf', async (req, res) => {
   try {
-    const prompt =
-      req.body?.prompt ||
-      'Using this PDF, quiz me on the material. Ask me questions one by one and assess my answer.';
+    const { pdfName } = req.body;
 
-    const fileName = req.body?.fileName || req.body?.pdfName || 'report.pdf';
-
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: 'OpenAI API key is not configured.' });
+    if (!pdfName) {
+      return res.status(400).json({ error: 'pdfName is required' });
     }
 
-    let resolvedPath = null;
-    if (req.body?.pdfName || req.body?.fileName) {
-      const publicDir = path.resolve(process.cwd(), 'public');
-      const candidates = [
-        path.resolve(publicDir, req.body?.pdfName || req.body?.fileName),
-        path.resolve(process.cwd(), req.body?.pdfName || req.body?.fileName),
-        path.resolve(req.body?.pdfName || req.body?.fileName)
-      ];
+    const pdfPath = path.join('/app/pdfs', pdfName);
 
-      resolvedPath = await (async () => {
-        for (const candidate of candidates) {
-          try {
-            await fs.access(candidate);
-            return candidate;
-          } catch {
-            // continue searching
-          }
-        }
-        return null;
-      })();
-
-      if (!resolvedPath) {
-        return res.status(400).json({ error: 'PDF file not found on the server.' });
-      }
-
+    if (!fs.existsSync(pdfPath)) {
+      return res.status(404).json({ error: 'PDF not found on server' });
     }
 
-    if (!resolvedPath) {
-      return res.status(400).json({ error: 'Missing PDF file upload or file name.' });
-    }
+    const pdfBuffer = fs.readFileSync(pdfPath);
+    const parsed = await pdfParse(pdfBuffer);
+    const text = parsed.text;
 
-    const uploaded = await openai.files.create({
-      file: createReadStream(resolvedPath),
-      purpose: 'assistants'
-    });
-
-    const response = await openai.responses.create({
-      model: 'gpt-4.1',
-      input: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'input_text',
-              text: `${prompt}\n\nCreate 5 quiz questions based on the attached PDF. Return only a numbered list with one question per line.`
-            },
-            {
-              type: 'input_file',
-              file_id: uploaded.id
-            }
-          ]
-        }
-      ]
-    });
-
-    const raw = response.output_text || '';
-    const questions = raw
-      .split(/\r?\n/)
-      .map((q) => q.replace(/^\s*\d+[.)]\s*/, '').trim())
-      .filter((q) => q.length > 0);
-
-    if (questions.length === 0) {
-      return res.status(500).json({ error: 'Could not generate quiz questions from PDF.' });
-    }
+    const quiz = generateQuizFromText(text);
 
     const quizId = crypto.randomUUID();
-    quizSessions[quizId] = { questions, index: 0 };
+    quizSessions[quizId] = { questions: quiz, index: 0 };
 
-    return res.json({ quizId, question: questions[0] });
+    res.json({ quizId, question: quiz[0] });
   } catch (err) {
     console.error('Quiz-from-PDF error:', err);
     return res.status(500).json({
       error: 'Failed to process PDF quiz request.',
       details: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
+    res.status(500).json({ error: 'Failed to process PDF quiz request.' });
   }
 });
 
