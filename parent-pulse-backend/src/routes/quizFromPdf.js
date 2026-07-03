@@ -1,12 +1,13 @@
 import express from 'express';
-import multer from 'multer';
 import OpenAI from 'openai';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import fs from 'fs/promises';
+import { createReadStream } from 'fs';
+import path from 'path';
 
 dotenv.config();
 
-const upload = multer();
 const router = express.Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -38,6 +39,10 @@ router.post('/quiz-from-pdf', async (req, res) => {
     res.json({ quizId, question: quiz[0] });
   } catch (err) {
     console.error('Quiz-from-PDF error:', err);
+    return res.status(500).json({
+      error: 'Failed to process PDF quiz request.',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
     res.status(500).json({ error: 'Failed to process PDF quiz request.' });
   }
 });
