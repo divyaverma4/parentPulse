@@ -90,10 +90,18 @@ function toLetterGrade(averageGPA) {
 function percentToLetterGrade(pct) {
   if (pct === null || pct === undefined) return null;
   const p = parseFloat(pct);
-  if (p >= 90) return 'A';
-  if (p >= 80) return 'B';
-  if (p >= 70) return 'C';
-  if (p >= 60) return 'D';
+  if (p >= 97) return 'A+';
+  if (p >= 93) return 'A';
+  if (p >= 90) return 'A-';
+  if (p >= 87) return 'B+';
+  if (p >= 83) return 'B';
+  if (p >= 80) return 'B-';
+  if (p >= 77) return 'C+';
+  if (p >= 73) return 'C';
+  if (p >= 70) return 'C-';
+  if (p >= 67) return 'D+';
+  if (p >= 63) return 'D';
+  if (p >= 60) return 'D-';
   return 'F';
 }
 
@@ -628,12 +636,19 @@ if (report) {
               };
             }
 
-            const gpaPart = courseExtreme.averageGrade != null
-              ? ` (GPA ${courseExtreme.averageGrade}, ${courseExtreme.letterGrade})`
+            const courseLetterGrade = percentToLetterGrade(courseExtreme.overallPercentage);
+            const percentText = Number(courseExtreme.overallPercentage).toFixed(2);
+            const courseGpaText = courseExtreme.averageGrade != null
+              ? Number(courseExtreme.averageGrade).toFixed(2)
+              : averageData.averageGrade != null
+                ? Number(averageData.averageGrade).toFixed(2)
+                : null;
+            const overallGpaText = courseGpaText != null
+              ? ` Your child's overall GPA is ${courseGpaText}.`
               : '';
             const response = `The ${extremeMode} overall grade is in ${courseExtreme.courseLabel}: ` +
-              `${courseExtreme.overallPercentage}%${gpaPart}, based on ` +
-              `${courseExtreme.gradedAssignments}/${courseExtreme.totalAssignments} assignments.`;
+              `${percentText}% (${courseLetterGrade}) based on ` +
+              `${courseExtreme.gradedAssignments} graded assignments.` + overallGpaText;
 
             return {
               question: userQuestion,
