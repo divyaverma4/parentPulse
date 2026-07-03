@@ -12,6 +12,7 @@ class ChatbotApp {
 
         this.apiBaseUrl = window.location.origin;
         this.isTyping = false;
+        this.currentQuizId = null;
 
         this.init();
     }
@@ -269,18 +270,19 @@ class ChatbotApp {
         try {
             const response = await this.callChatAPI(question, studentId, report);
             this.hideTypingIndicator();
-
-            this.addMessage(response, 'bot', {
-                showMoreDetails: true,
-                kind: kind
-            });
+            const options = {};
+            // Only show More Details button for upcoming_tests
+            if (kind === 'upcoming_tests') {
+                options.showMoreDetails = true;
+                options.kind = kind;
+            }
+            this.addMessage(response, 'bot', options);
         }
         catch (err) {
             this.hideTypingIndicator();
             this.showError('Sorry, I encountered an error. Please try again.');
             console.error('Preset API error:', err);
         }
-
         this.setInputDisabled(false);
     }
 
@@ -363,9 +365,12 @@ async startQuizFromPDF(pdfUrl) {
         this.hideTypingIndicator();
 
         // Start quiz properly
-        if (data.quizId && data.question) {
-            this.currentQuizId = data.quizId;
-            this.addMessage(data.question, "bot");
+        const quizId = data.quizId || data.id;
+        const firstQuestion = data.question || data.response || data.message;
+
+        if (quizId && firstQuestion) {
+            this.currentQuizId = quizId;
+            this.addMessage(firstQuestion, "bot");
         } else {
             this.addMessage("Unable to start quiz.", "bot");
         }
