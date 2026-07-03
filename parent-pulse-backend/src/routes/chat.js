@@ -142,8 +142,8 @@ router.get('/average/:studentUserId', async (req, res) => {
 
     let letterGrade = 'F';
     const gpa = parseFloat(averageGPA);
-
-    if (gpa >= 4.0) letterGrade = 'A+';
+    if (gpa > 4.0) letterGrade = 'A+';
+    else if (gpa == 4.0) letterGrade = 'A';
     else if (gpa >= 3.7) letterGrade = 'A-';
     else if (gpa >= 3.3) letterGrade = 'B+';
     else if (gpa >= 3.0) letterGrade = 'B';
@@ -153,7 +153,6 @@ router.get('/average/:studentUserId', async (req, res) => {
     else if (gpa >= 1.7) letterGrade = 'C-';
     else if (gpa >= 1.3) letterGrade = 'D+';
     else if (gpa >= 1.0) letterGrade = 'D';
-    else if (gpa >= 0.7) letterGrade = 'D-';
 
     const gradedByGrade = grades.filter(g => g.grade && g.grade.trim() !== '').length;
     const gradedByScoreOnly = grades.filter(g => (!g.grade || g.grade.trim() === '') && g.score != null).length;
