@@ -1,37 +1,63 @@
 import express from 'express';
-import multer from 'multer';
 import OpenAI from 'openai';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import fs from 'fs/promises';
+import { createReadStream } from 'fs';
+import path from 'path';
 
 dotenv.config();
 
-const upload = multer();
 const router = express.Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const quizSessions = {};
 
-router.post('/quiz-from-pdf', upload.single('file'), async (req, res) => {
+router.post('/quiz-from-pdf', async (req, res) => {
   try {
     const prompt =
-      req.body.prompt ||
+      req.body?.prompt ||
       'Using this PDF, quiz me on the material. Ask me questions one by one and assess my answer.';
 
-    const pdfBuffer = req.file?.buffer;
-    const fileName = req.file?.originalname || req.body.fileName || 'report.pdf';
+    const fileName = req.body?.fileName || req.body?.pdfName || 'report.pdf';
 
-    if (!pdfBuffer) {
-      return res.status(400).json({ error: 'Missing PDF file upload.' });
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
-    // FIX: Use Node buffer upload instead of browser File()
+    let resolvedPath = null;
+    if (req.body?.pdfName || req.body?.fileName) {
+      const publicDir = path.resolve(process.cwd(), 'public');
+      const candidates = [
+        path.resolve(publicDir, req.body?.pdfName || req.body?.fileName),
+        path.resolve(process.cwd(), req.body?.pdfName || req.body?.fileName),
+        path.resolve(req.body?.pdfName || req.body?.fileName)
+      ];
+
+      resolvedPath = await (async () => {
+        for (const candidate of candidates) {
+          try {
+            await fs.access(candidate);
+            return candidate;
+          } catch {
+            // continue searching
+          }
+        }
+        return null;
+      })();
+
+      if (!resolvedPath) {
+        return res.status(400).json({ error: 'PDF file not found on the server.' });
+      }
+
+    }
+
+    if (!resolvedPath) {
+      return res.status(400).json({ error: 'Missing PDF file upload or file name.' });
+    }
+
     const uploaded = await openai.files.create({
-      file: {
-        buffer: pdfBuffer,
-        filename: fileName,
-        mimeType: req.file?.mimetype || 'application/pdf'
-      },
+      file: createReadStream(resolvedPath),
       purpose: 'assistants'
     });
 
@@ -70,7 +96,10 @@ router.post('/quiz-from-pdf', upload.single('file'), async (req, res) => {
     return res.json({ quizId, question: questions[0] });
   } catch (err) {
     console.error('Quiz-from-PDF error:', err);
-    return res.status(500).json({ error: 'Failed to process PDF quiz request.' });
+    return res.status(500).json({
+      error: 'Failed to process PDF quiz request.',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 
