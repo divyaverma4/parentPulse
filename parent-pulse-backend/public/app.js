@@ -344,7 +344,7 @@ async startQuizFromPDF(pdfName) {
     this.showTypingIndicator();
 
     try {
-        const response = await fetch(`${this.apiBaseUrl}/api/quiz/from-pdf`, {
+        const response = await fetch(`${this.apiBaseUrl}/api/chat/quiz-from-pdf`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ pdfName })
