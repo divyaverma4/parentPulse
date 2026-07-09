@@ -190,7 +190,7 @@ class ChatbotApp {
             detailsBtn.addEventListener('click', async () => {
                 detailsBtn.disabled = true;
                 try {
-                    await this.loadMoreDetails(messageDiv, options.subject);
+                    await this.loadMoreDetails(messageDiv, options.subjects);
                 } catch (err) {
                     detailsBtn.disabled = false;
                     throw err;
@@ -250,15 +250,18 @@ class ChatbotApp {
         }, 100);
     }
 
-    // ⭐ Detect subject from chatbot response
-    detectSubject(text) {
+    // ⭐ Detect ALL subjects in chatbot response
+    detectSubjects(text) {
         const subjects = Object.keys(this.pdfMap);
+        const found = [];
+
         for (const s of subjects) {
             if (text.toLowerCase().includes(s.toLowerCase())) {
-                return s;
+                found.push(s);
             }
         }
-        return null;
+
+        return [...new Set(found)];
     }
 
     async sendPreset(kind) {
@@ -293,12 +296,12 @@ class ChatbotApp {
             const response = await this.callChatAPI(question, studentId, report);
             this.hideTypingIndicator();
 
-            const subject = this.detectSubject(response);
+            const subjects = this.detectSubjects(response);
 
             const options = {};
-            if (kind === 'upcoming_tests' && subject) {
+            if (kind === 'upcoming_tests' && subjects.length > 0) {
                 options.showMoreDetails = true;
-                options.subject = subject;
+                options.subjects = subjects;
             }
 
             this.addMessage(response, 'bot', options);
@@ -312,43 +315,54 @@ class ChatbotApp {
         this.setInputDisabled(false);
     }
 
-    async loadMoreDetails(parentMessage, subject) {
+    async loadMoreDetails(parentMessage, subjects) {
         try {
-            const pdfUrl = subject && this.pdfMap[subject] ? this.pdfMap[subject] : null;
+            const pdfUrls = subjects
+                .map(s => this.pdfMap[s])
+                .filter(Boolean);
 
             const detailsDiv = document.createElement('div');
             detailsDiv.className = 'more-details-content';
 
-            if (!pdfUrl) {
-                detailsDiv.innerHTML = `<p>No relevant PDF available for this subject.</p>`;
+            if (pdfUrls.length === 0) {
+                detailsDiv.innerHTML = `<p>No relevant PDFs available for these subjects.</p>`;
                 parentMessage.appendChild(detailsDiv);
                 return;
             }
 
-            detailsDiv.innerHTML = `
+            let html = `
                 <div style="margin-top:10px;">
-                    <strong>Additional Details</strong>
-                    <p>Here is your detailed report. You can download the PDF below.</p>
-
-                    <div class="pdf-attachment">
-                        📄 <a href="${pdfUrl}" target="_blank" download>
-                            Download PDF Report
-                        </a>
-                    </div>
-
-                    <button class="quiz-me-btn" style="
-                        margin-top:12px;
-                        padding:8px 14px;
-                        border-radius:6px;
-                        background:#4a6cf7;
-                        color:white;
-                        border:none;
-                        cursor:pointer;
-                    ">
-                        Quiz Me
-                    </button>
-                </div>
+                    <strong style="color:white;">Additional Details</strong>
+                    <p style="color:white;">Here are the study guides for the subjects mentioned:</p>
             `;
+
+            pdfUrls.forEach((pdfUrl, idx) => {
+                html += `
+                    <div style="margin-top:20px; padding:12px; border-radius:8px; background:#333;">
+                        <p style="color:white;"><strong>Study Guide ${idx + 1}</strong></p>
+                        <div class="pdf-attachment" style="margin-bottom:10px;">
+                            📄 <a href="${pdfUrl}" target="_blank" download style="color:white; text-decoration:underline;">
+                                Download PDF
+                            </a>
+                        </div>
+
+                        <button class="quiz-me-btn" style="
+                            margin-top:8px;
+                            padding:8px 14px;
+                            border-radius:6px;
+                            background:#ffffff;
+                            color:#000;
+                            border:none;
+                            cursor:pointer;
+                        " data-pdf="${pdfUrl}">
+                            Quiz Me
+                        </button>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            detailsDiv.innerHTML = html;
 
             parentMessage.appendChild(detailsDiv);
 
@@ -358,8 +372,13 @@ class ChatbotApp {
                 btn.textContent = 'Details Loaded';
             }
 
-            const quizBtn = detailsDiv.querySelector('.quiz-me-btn');
-            quizBtn.addEventListener('click', () => this.startQuizFromPDF(pdfUrl));
+            // Attach quiz buttons
+            detailsDiv.querySelectorAll('.quiz-me-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const pdfName = btn.getAttribute('data-pdf');
+                    this.startQuizFromPDF(pdfName);
+                });
+            });
 
         } catch (error) {
             console.error(error);
@@ -398,7 +417,7 @@ class ChatbotApp {
         }
     }
 
-    // ⭐ NEW — Quiz Summary Renderer
+    // ⭐ Quiz Summary Renderer
     showQuizSummary(summary) {
         if (!summary) return;
 
@@ -408,7 +427,7 @@ class ChatbotApp {
         summaryDiv.className = 'quiz-summary';
 
         summaryDiv.innerHTML = `
-            <div style="margin-top:15px; padding:12px; border-radius:8px; background:#f5f5f5;">
+            <div style="margin-top:15px; padding:12px; border-radius:8px; background:#222; color:white;">
                 <h3>📊 Quiz Summary</h3>
                 <p><strong>Total Questions:</strong> ${totalQuestions}</p>
                 <p><strong>Correct:</strong> ${correct}</p>
@@ -418,7 +437,7 @@ class ChatbotApp {
                 <h4 style="margin-top:12px;">Your Answers:</h4>
                 <ul style="padding-left:20px;">
                     ${results.map(r => `
-                        <li style="margin-bottom:8px;">
+                        <li style="margin-bottom:12px;">
                             <strong>Q:</strong> ${r.question}<br>
                             <strong>A:</strong> ${r.answer}<br>
                             <strong>Result:</strong> ${r.correct ? "✅ Correct" : "❌ Incorrect"}<br>
