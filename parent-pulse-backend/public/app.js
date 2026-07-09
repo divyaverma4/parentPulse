@@ -5,6 +5,7 @@ class ChatbotApp {
         this.sendButton = document.getElementById('send-button');
         this.studentIdInput = document.getElementById('studentId');
         this.darkToggle = document.getElementById('dark-mode-toggle');
+
         this.btnUpcomingTests = document.getElementById('btn-upcoming-tests');
         this.btnUpcomingDue = document.getElementById('btn-upcoming-due');
         this.btnLowestGrade = document.getElementById('btn-lowest-grade');
@@ -13,6 +14,19 @@ class ChatbotApp {
         this.apiBaseUrl = window.location.origin;
         this.isTyping = false;
         this.currentQuizId = null;
+
+        // SUBJECT → PDF mapping 
+        this.pdfMap = {
+            "Math": "Pre-AlgebraStudyGuide.pdf",
+            "Pre-Algebra": "Pre-AlgebraStudyGuide.pdf",
+            "Pre Algebra": "Pre-AlgebraStudyGuide.pdf",
+            "Science": "LifeScienceStudyGuide.pdf",
+            "Life Science": "LifeScienceStudyGuide.pdf",
+            "Social Studies": "SocialStudiesStudyGuide.pdf",
+            "History": "HistoryStudyGuide.pdf",
+            "US History": "HistoryStudyGuide.pdf",
+            "U.S. History": "HistoryStudyGuide.pdf"
+        };
 
         this.init();
     }
@@ -63,73 +77,73 @@ class ChatbotApp {
     }
 
     async sendMessage() {
-    const message = this.messageInput.value.trim();
-    const studentId = this.studentIdInput.value.trim();
+        const message = this.messageInput.value.trim();
+        const studentId = this.studentIdInput.value.trim();
 
-    if (!message) return;
-    if (!studentId || isNaN(parseInt(studentId))) {
-        this.showError('Please enter a valid Student ID');
-        return;
-    }
+        if (!message) return;
+        if (!studentId || isNaN(parseInt(studentId))) {
+            this.showError('Please enter a valid Student ID');
+            return;
+        }
 
-    this.addMessage(message, 'user');
-    this.messageInput.value = '';
-    this.setInputDisabled(true);
-    this.showTypingIndicator();
+        this.addMessage(message, 'user');
+        this.messageInput.value = '';
+        this.setInputDisabled(true);
+        this.showTypingIndicator();
 
-    // 🔥 QUIZ MODE OVERRIDE — handles quiz answers FIRST
-    if (this.currentQuizId) {
-        try {
-            const response = await fetch(`${this.apiBaseUrl}/api/chat/quiz-answer`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    quizId: this.currentQuizId,
-                    answer: message
-                })
-            });
+        // QUIZ MODE
+        if (this.currentQuizId) {
+            try {
+                const response = await fetch(`${this.apiBaseUrl}/api/chat/quiz-answer`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        quizId: this.currentQuizId,
+                        answer: message
+                    })
+                });
 
-            const data = await response.json();
-            this.hideTypingIndicator();
+                const data = await response.json();
+                this.hideTypingIndicator();
 
-            this.addMessage(
-                `${data.correct ? "✅ Correct" : "❌ Incorrect"}<br>${data.explanation}`,
-                "bot"
-            );
+                this.addMessage(
+                    `${data.correct ? "✅ Correct" : "❌ Incorrect"}<br>${data.explanation}`,
+                    "bot"
+                );
 
-            if (data.nextQuestion) {
-                this.addMessage(data.nextQuestion, "bot");
-            } else {
-                this.addMessage("🎉 Quiz complete!", "bot");
-                this.currentQuizId = null;
+                if (data.nextQuestion) {
+                    this.addMessage(data.nextQuestion, "bot");
+                } else {
+                    this.addMessage("🎉 Quiz complete!", "bot");
+                    this.showQuizSummary(data.summary);
+                    this.currentQuizId = null;
+                }
+
+            } catch (err) {
+                this.hideTypingIndicator();
+                this.showError("Quiz error — try again.");
+                console.error(err);
             }
 
-        } catch (err) {
+            this.setInputDisabled(false);
+            this.messageInput.focus();
+            return;
+        }
+
+        // NORMAL CHAT MODE
+        try {
+            const response = await this.callChatAPI(message, studentId);
             this.hideTypingIndicator();
-            this.showError("Quiz error — try again.");
-            console.error(err);
+            this.addMessage(response, 'bot');
+        } catch (error) {
+            this.hideTypingIndicator();
+            this.showError('Sorry, I encountered an error. Please try again.');
+            console.error('Chat API error:', error);
         }
 
         this.setInputDisabled(false);
         this.messageInput.focus();
-        return; // 🔥 STOP — do NOT call normal chat API
     }
-
-    // 🔥 NORMAL CHAT MODE
-    try {
-        const response = await this.callChatAPI(message, studentId);
-        this.hideTypingIndicator();
-        this.addMessage(response, 'bot');
-    } catch (error) {
-        this.hideTypingIndicator();
-        this.showError('Sorry, I encountered an error. Please try again.');
-        console.error('Chat API error:', error);
-    }
-
-    this.setInputDisabled(false);
-    this.messageInput.focus();
-}
-
 
     async callChatAPI(question, studentId, report = null) {
         const body = {
@@ -141,9 +155,7 @@ class ChatbotApp {
 
         const response = await fetch(`${this.apiBaseUrl}/api/chat/ask`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
 
@@ -162,7 +174,6 @@ class ChatbotApp {
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
 
-        // FIX: bot messages can contain HTML (needed for PDF/details)
         if (sender === 'bot') {
             contentDiv.innerHTML = content;
         } else {
@@ -177,9 +188,9 @@ class ChatbotApp {
             detailsBtn.textContent = 'More Details';
 
             detailsBtn.addEventListener('click', async () => {
-                detailsBtn.disabled = true; // FIX: prevent double-click
+                detailsBtn.disabled = true;
                 try {
-                    await this.loadMoreDetails(messageDiv, options.kind);
+                    await this.loadMoreDetails(messageDiv, options.subject);
                 } catch (err) {
                     detailsBtn.disabled = false;
                     throw err;
@@ -239,6 +250,17 @@ class ChatbotApp {
         }, 100);
     }
 
+    // ⭐ Detect subject from chatbot response
+    detectSubject(text) {
+        const subjects = Object.keys(this.pdfMap);
+        for (const s of subjects) {
+            if (text.toLowerCase().includes(s.toLowerCase())) {
+                return s;
+            }
+        }
+        return null;
+    }
+
     async sendPreset(kind) {
         const studentId = this.studentIdInput.value.trim();
         if (!studentId || isNaN(parseInt(studentId))) {
@@ -270,109 +292,146 @@ class ChatbotApp {
         try {
             const response = await this.callChatAPI(question, studentId, report);
             this.hideTypingIndicator();
+
+            const subject = this.detectSubject(response);
+
             const options = {};
-            // Only show More Details button for upcoming_tests
-            if (kind === 'upcoming_tests') {
+            if (kind === 'upcoming_tests' && subject) {
                 options.showMoreDetails = true;
-                options.kind = kind;
+                options.subject = subject;
             }
+
             this.addMessage(response, 'bot', options);
-        }
-        catch (err) {
+
+        } catch (err) {
             this.hideTypingIndicator();
             this.showError('Sorry, I encountered an error. Please try again.');
             console.error('Preset API error:', err);
         }
+
         this.setInputDisabled(false);
     }
 
-    async loadMoreDetails(parentMessage, kind) {
-    try {
-        const response = "Here is your detailed report. You can download the PDF below.";
-        const pdfUrl = `socialstudies.pdf`;
+    async loadMoreDetails(parentMessage, subject) {
+        try {
+            const pdfUrl = subject && this.pdfMap[subject] ? this.pdfMap[subject] : null;
 
-        const detailsDiv = document.createElement('div');
-        detailsDiv.className = 'more-details-content';
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'more-details-content';
 
-        detailsDiv.innerHTML = `
-            <div style="margin-top:10px;">
-                <strong>Additional Details</strong>
-                <p>${response}</p>
+            if (!pdfUrl) {
+                detailsDiv.innerHTML = `<p>No relevant PDF available for this subject.</p>`;
+                parentMessage.appendChild(detailsDiv);
+                return;
+            }
 
-                <div class="pdf-attachment">
-                    📄 <a href="${pdfUrl}" target="_blank" download>
-                        Download PDF Report
-                    </a>
+            detailsDiv.innerHTML = `
+                <div style="margin-top:10px;">
+                    <strong>Additional Details</strong>
+                    <p>Here is your detailed report. You can download the PDF below.</p>
+
+                    <div class="pdf-attachment">
+                        📄 <a href="${pdfUrl}" target="_blank" download>
+                            Download PDF Report
+                        </a>
+                    </div>
+
+                    <button class="quiz-me-btn" style="
+                        margin-top:12px;
+                        padding:8px 14px;
+                        border-radius:6px;
+                        background:#4a6cf7;
+                        color:white;
+                        border:none;
+                        cursor:pointer;
+                    ">
+                        Quiz Me
+                    </button>
                 </div>
+            `;
 
-                <button class="quiz-me-btn" style="
-                    margin-top:12px;
-                    padding:8px 14px;
-                    border-radius:6px;
-                    background:#4a6cf7;
-                    color:white;
-                    border:none;
-                    cursor:pointer;
-                ">
-                    Quiz Me
-                </button>
+            parentMessage.appendChild(detailsDiv);
+
+            const btn = parentMessage.querySelector('.more-details-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Details Loaded';
+            }
+
+            const quizBtn = detailsDiv.querySelector('.quiz-me-btn');
+            quizBtn.addEventListener('click', () => this.startQuizFromPDF(pdfUrl));
+
+        } catch (error) {
+            console.error(error);
+            this.showError('Unable to load additional details.');
+        }
+    }
+
+    async startQuizFromPDF(pdfName) {
+        this.addMessage("Starting quiz based on the PDF…", "bot");
+        this.showTypingIndicator();
+
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/api/chat/quiz-from-pdf`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pdfName })
+            });
+
+            const data = await response.json();
+            this.hideTypingIndicator();
+
+            const quizId = data.quizId;
+            const firstQuestion = data.question;
+
+            if (quizId && firstQuestion) {
+                this.currentQuizId = quizId;
+                this.addMessage(firstQuestion, "bot");
+            } else {
+                this.addMessage("Unable to start quiz.", "bot");
+            }
+
+        } catch (err) {
+            this.hideTypingIndicator();
+            this.showError("Unable to start quiz.");
+            console.error(err);
+        }
+    }
+
+    // ⭐ NEW — Quiz Summary Renderer
+    showQuizSummary(summary) {
+        if (!summary) return;
+
+        const { totalQuestions, correct, incorrect, percentage, results } = summary;
+
+        const summaryDiv = document.createElement('div');
+        summaryDiv.className = 'quiz-summary';
+
+        summaryDiv.innerHTML = `
+            <div style="margin-top:15px; padding:12px; border-radius:8px; background:#f5f5f5;">
+                <h3>📊 Quiz Summary</h3>
+                <p><strong>Total Questions:</strong> ${totalQuestions}</p>
+                <p><strong>Correct:</strong> ${correct}</p>
+                <p><strong>Incorrect:</strong> ${incorrect}</p>
+                <p><strong>Score:</strong> ${percentage}%</p>
+
+                <h4 style="margin-top:12px;">Your Answers:</h4>
+                <ul style="padding-left:20px;">
+                    ${results.map(r => `
+                        <li style="margin-bottom:8px;">
+                            <strong>Q:</strong> ${r.question}<br>
+                            <strong>A:</strong> ${r.answer}<br>
+                            <strong>Result:</strong> ${r.correct ? "✅ Correct" : "❌ Incorrect"}<br>
+                            <em>${r.explanation}</em>
+                        </li>
+                    `).join('')}
+                </ul>
             </div>
         `;
 
-        parentMessage.appendChild(detailsDiv);
-
-        const btn = parentMessage.querySelector('.more-details-btn');
-        if (btn) {
-            btn.disabled = true;
-            btn.textContent = 'Details Loaded';
-        }
-
-        // Attach quiz button
-        const quizBtn = detailsDiv.querySelector('.quiz-me-btn');
-        quizBtn.addEventListener('click', () => this.startQuizFromPDF("socialstudies.pdf"));
-
-
-    } catch (error) {
-        console.error(error);
-        this.showError('Unable to load additional details.');
+        this.messagesContainer.appendChild(summaryDiv);
+        this.scrollToBottom();
     }
-}
-
-
-async startQuizFromPDF(pdfName) {
-    this.addMessage("Starting quiz based on the PDF…", "bot");
-    this.showTypingIndicator();
-
-    try {
-        const response = await fetch(`${this.apiBaseUrl}/api/chat/quiz-from-pdf`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pdfName })
-        });
-
-        const data = await response.json();
-        this.hideTypingIndicator();
-
-        const quizId = data.quizId;
-        const firstQuestion = data.question;
-
-        if (quizId && firstQuestion) {
-            this.currentQuizId = quizId;
-            this.addMessage(firstQuestion, "bot");
-        } else {
-            this.addMessage("Unable to start quiz.", "bot");
-        }
-
-    } catch (err) {
-        this.hideTypingIndicator();
-        this.showError("Unable to start quiz.");
-        console.error(err);
-    }
-}
-
-
-
-
 }
 
 document.addEventListener('DOMContentLoaded', () => {
