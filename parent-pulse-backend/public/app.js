@@ -111,11 +111,16 @@ class ChatbotApp {
                     "bot"
                 );
 
-                if (data.nextQuestion) {
+                // ⭐ FIX: Always show summary when quiz ends
+                if (data.nextQuestion !== null && data.nextQuestion !== undefined) {
                     this.addMessage(data.nextQuestion, "bot");
                 } else {
                     this.addMessage("🎉 Quiz complete!", "bot");
-                    this.showQuizSummary(data.summary);
+
+                    if (data.summary) {
+                        this.showQuizSummary(data.summary);
+                    }
+
                     this.currentQuizId = null;
                 }
 
@@ -338,7 +343,7 @@ class ChatbotApp {
 
             pdfUrls.forEach((pdfUrl, idx) => {
                 html += `
-                    <div style="margin-top:20px; padding:12px; border-radius:8px; background:#333;">
+                    <div style="margin-top:25px; padding:15px; border-radius:8px; background:#333;">
                         <p style="color:white;"><strong>Study Guide ${idx + 1}</strong></p>
                         <div class="pdf-attachment" style="margin-bottom:10px;">
                             📄 <a href="${pdfUrl}" target="_blank" download style="color:white; text-decoration:underline;">
@@ -348,7 +353,7 @@ class ChatbotApp {
 
                         <button class="quiz-me-btn" style="
                             margin-top:8px;
-                            padding:8px 14px;
+                            padding:10px 16px;
                             border-radius:6px;
                             background:#ffffff;
                             color:#000;
@@ -427,17 +432,17 @@ class ChatbotApp {
         summaryDiv.className = 'quiz-summary';
 
         summaryDiv.innerHTML = `
-            <div style="margin-top:15px; padding:12px; border-radius:8px; background:#222; color:white;">
+            <div style="margin-top:20px; padding:15px; border-radius:8px; background:#222; color:white;">
                 <h3>📊 Quiz Summary</h3>
                 <p><strong>Total Questions:</strong> ${totalQuestions}</p>
                 <p><strong>Correct:</strong> ${correct}</p>
                 <p><strong>Incorrect:</strong> ${incorrect}</p>
                 <p><strong>Score:</strong> ${percentage}%</p>
 
-                <h4 style="margin-top:12px;">Your Answers:</h4>
+                <h4 style="margin-top:15px;">Your Answers:</h4>
                 <ul style="padding-left:20px;">
                     ${results.map(r => `
-                        <li style="margin-bottom:12px;">
+                        <li style="margin-bottom:15px;">
                             <strong>Q:</strong> ${r.question}<br>
                             <strong>A:</strong> ${r.answer}<br>
                             <strong>Result:</strong> ${r.correct ? "✅ Correct" : "❌ Incorrect"}<br>
