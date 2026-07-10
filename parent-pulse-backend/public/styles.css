@@ -129,7 +129,7 @@ body {
     display: flex;
     gap: 0.35rem;
     padding: 0.35rem;
-    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
     background: rgba(255, 255, 255, 0.92);
     border: 1px solid rgba(102, 126, 234, 0.18);
     border-radius: 999px;
@@ -142,7 +142,7 @@ body {
     border-radius: 999px;
     padding: 0.75rem 1rem;
     background: transparent;
-    color: #4b5563;
+    color: #475569;
     font-weight: 700;
     cursor: pointer;
     min-height: 44px;
@@ -150,9 +150,9 @@ body {
 }
 
 .tab-btn.is-active {
-    background: linear-gradient(90deg, #4f46e5, #7c3aed);
+    background: linear-gradient(90deg, #0f766e, #2563eb);
     color: #ffffff;
-    box-shadow: 0 3px 10px rgba(79, 70, 229, 0.2);
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.2);
 }
 
 .content-panel {
@@ -213,22 +213,6 @@ body {
 .quiz-header p {
     font-size: 0.95rem;
     opacity: 0.8;
-}
-
-.back-to-chat-btn {
-    border: none;
-    border-radius: 999px;
-    padding: 0.55rem 0.85rem;
-    background: linear-gradient(90deg, #4f46e5, #7c3aed);
-    color: #ffffff;
-    font-weight: 700;
-    cursor: pointer;
-    white-space: nowrap;
-    box-shadow: 0 3px 10px rgba(79, 70, 229, 0.2);
-}
-
-.back-to-chat-btn:hover {
-    filter: brightness(0.95);
 }
 
 .quiz-options {

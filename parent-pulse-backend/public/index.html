@@ -20,6 +20,11 @@
         </header>
 
         <div class="main-shell">
+            <div class="tab-bar" role="tablist" aria-label="Main views">
+                <button class="tab-btn is-active" id="tab-chat" data-tab="chat" role="tab" aria-selected="true">Chat</button>
+                <button class="tab-btn" id="tab-quiz" data-tab="quiz" role="tab" aria-selected="false">Quiz</button>
+            </div>
+
             <div class="content-panel">
                 <section id="chat-panel" class="view-panel is-active" role="tabpanel">
                     <div class="chat-container">
@@ -47,7 +52,6 @@
                                 <h2>Study Quizzes</h2>
                                 <p>Select one of the available study guides to start a quiz.</p>
                             </div>
-                            <button id="back-to-chat-btn" class="back-to-chat-btn" type="button">Back to Chat</button>
                         </div>
                         <div id="quiz-options" class="quiz-options"></div>
                         <div id="quiz-messages" class="quiz-messages">
@@ -59,11 +63,6 @@
                         </div>
                     </div>
                 </section>
-            </div>
-
-            <div class="tab-bar" role="tablist" aria-label="Main views">
-                <button class="tab-btn is-active" id="tab-chat" data-tab="chat" role="tab" aria-selected="true">Chat</button>
-                <button class="tab-btn" id="tab-quiz" data-tab="quiz" role="tab" aria-selected="false">Quiz</button>
             </div>
 
             <div class="input-container">
