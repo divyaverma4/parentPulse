@@ -1,6 +1,7 @@
 class ChatbotApp {
     constructor() {
         this.messagesContainer = document.getElementById('chat-messages');
+        this.quizMessagesContainer = document.getElementById('quiz-messages');
         this.messageInput = document.getElementById('message-input');
         this.sendButton = document.getElementById('send-button');
         this.studentIdInput = document.getElementById('studentId');
@@ -11,21 +12,37 @@ class ChatbotApp {
         this.btnLowestGrade = document.getElementById('btn-lowest-grade');
         this.btnMissing = document.getElementById('btn-missing-assignments');
 
+        this.chatPanel = document.getElementById('chat-panel');
+        this.quizPanel = document.getElementById('quiz-panel');
+        this.tabButtons = document.querySelectorAll('.tab-btn');
+        this.quizOptionsContainer = document.getElementById('quiz-options');
+        this.backToChatButton = document.getElementById('back-to-chat-btn');
+
         this.apiBaseUrl = window.location.origin;
         this.isTyping = false;
         this.currentQuizId = null;
+        this.activeTab = 'chat';
+        this.currentMessageContainer = this.messagesContainer;
+        this.quizResults = [];
+        this.currentQuizQuestion = '';
 
-        // SUBJECT → PDF mapping 
+        this.quizPdfOptions = [
+            { label: 'Pre-Algebra', pdf: 'Pre-AlgStudyGuide.pdf' },
+            { label: 'Life Science', pdf: 'LifeScienceStudyGuide.pdf' },
+            { label: 'Social Studies', pdf: 'SocialStudiesStudyGuide.pdf' }
+        ];
+
+        // SUBJECT → PDF mapping
         this.pdfMap = {
-            "Math": "Pre-AlgebraStudyGuide.pdf",
-            "Pre-Algebra": "Pre-AlgebraStudyGuide.pdf",
-            "Pre Algebra": "Pre-AlgebraStudyGuide.pdf",
+            "Math": "Pre-AlgStudyGuide.pdf",
+            "Pre-Algebra": "Pre-AlgStudyGuide.pdf",
+            "Pre Algebra": "Pre-AlgStudyGuide.pdf",
             "Science": "LifeScienceStudyGuide.pdf",
             "Life Science": "LifeScienceStudyGuide.pdf",
             "Social Studies": "SocialStudiesStudyGuide.pdf",
-            "History": "HistoryStudyGuide.pdf",
-            "US History": "HistoryStudyGuide.pdf",
-            "U.S. History": "HistoryStudyGuide.pdf"
+            "History": "SocialStudiesStudyGuide.pdf",
+            "US History": "SocialStudiesStudyGuide.pdf",
+            "U.S. History": "SocialStudiesStudyGuide.pdf"
         };
 
         this.init();
@@ -52,11 +69,53 @@ class ChatbotApp {
         if (this.btnLowestGrade) this.btnLowestGrade.addEventListener('click', () => this.sendPreset('lowest_grade'));
         if (this.btnMissing) this.btnMissing.addEventListener('click', () => this.sendPreset('missing_assignments'));
 
+        this.tabButtons.forEach((btn) => {
+            btn.addEventListener('click', () => this.switchTab(btn.dataset.tab));
+        });
+
+        if (this.backToChatButton) {
+            this.backToChatButton.addEventListener('click', () => this.switchTab('chat'));
+        }
+
+        this.renderQuizButtons();
+
         if ('ontouchstart' in window) {
             this.messageInput.focus();
         }
 
         this.handleViewportHeight();
+        this.switchTab('chat');
+    }
+
+    switchTab(tab) {
+        this.activeTab = tab;
+        this.chatPanel.classList.toggle('is-active', tab === 'chat');
+        this.quizPanel.classList.toggle('is-active', tab === 'quiz');
+        this.currentMessageContainer = tab === 'quiz' ? this.quizMessagesContainer : this.messagesContainer;
+
+        this.tabButtons.forEach((btn) => {
+            const isActive = btn.dataset.tab === tab;
+            btn.classList.toggle('is-active', isActive);
+            btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        this.messageInput.placeholder = tab === 'quiz' ? 'Type your quiz answer...' : 'Type your message...';
+        this.messageInput.focus();
+    }
+
+    renderQuizButtons() {
+        if (!this.quizOptionsContainer) return;
+
+        this.quizOptionsContainer.innerHTML = '';
+
+        this.quizPdfOptions.forEach((option) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'quiz-pdf-btn';
+            button.textContent = option.label;
+            button.addEventListener('click', () => this.startQuizFromPDF(option.pdf));
+            this.quizOptionsContainer.appendChild(button);
+        });
     }
 
     toggleDarkMode() {
@@ -81,6 +140,65 @@ class ChatbotApp {
         const studentId = this.studentIdInput.value.trim();
 
         if (!message) return;
+
+        if (this.activeTab === 'quiz') {
+            if (!this.currentQuizId) {
+                this.showError('Select a study guide to start a quiz.');
+                return;
+            }
+
+            const currentQuestion = this.currentQuizQuestion;
+            this.addMessage(message, 'user');
+            this.messageInput.value = '';
+            this.setInputDisabled(true);
+            this.showTypingIndicator();
+
+            try {
+                const response = await fetch(`${this.apiBaseUrl}/api/chat/quiz-answer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        quizId: this.currentQuizId,
+                        answer: message
+                    })
+                });
+
+                const data = await response.json();
+                this.hideTypingIndicator();
+
+                this.quizResults.push({
+                    question: currentQuestion,
+                    answer: message,
+                    correct: Boolean(data.correct),
+                    explanation: data.explanation || 'No explanation provided.'
+                });
+
+                this.addMessage(
+                    `${data.correct ? '✅ Correct' : '❌ Incorrect'}<br>${data.explanation}`,
+                    'bot'
+                );
+
+                if (data.nextQuestion !== null && data.nextQuestion !== undefined) {
+                    this.currentQuizQuestion = data.nextQuestion;
+                    this.addMessage(data.nextQuestion, 'bot');
+                } else {
+                    this.addMessage('🎉 Quiz complete!', 'bot');
+                    this.showQuizSummary();
+                    this.currentQuizId = null;
+                    this.currentQuizQuestion = '';
+                    this.quizResults = [];
+                }
+            } catch (err) {
+                this.hideTypingIndicator();
+                this.showError('Quiz error — try again.');
+                console.error(err);
+            }
+
+            this.setInputDisabled(false);
+            this.messageInput.focus();
+            return;
+        }
+
         if (!studentId || isNaN(parseInt(studentId))) {
             this.showError('Please enter a valid Student ID');
             return;
@@ -91,51 +209,6 @@ class ChatbotApp {
         this.setInputDisabled(true);
         this.showTypingIndicator();
 
-        // QUIZ MODE
-        if (this.currentQuizId) {
-            try {
-                const response = await fetch(`${this.apiBaseUrl}/api/chat/quiz-answer`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        quizId: this.currentQuizId,
-                        answer: message
-                    })
-                });
-
-                const data = await response.json();
-                this.hideTypingIndicator();
-
-                this.addMessage(
-                    `${data.correct ? "✅ Correct" : "❌ Incorrect"}<br>${data.explanation}`,
-                    "bot"
-                );
-
-                // ⭐ FIX: Always show summary when quiz ends
-                if (data.nextQuestion !== null && data.nextQuestion !== undefined) {
-                    this.addMessage(data.nextQuestion, "bot");
-                } else {
-                    this.addMessage("🎉 Quiz complete!", "bot");
-
-                    if (data.summary) {
-                        this.showQuizSummary(data.summary);
-                    }
-
-                    this.currentQuizId = null;
-                }
-
-            } catch (err) {
-                this.hideTypingIndicator();
-                this.showError("Quiz error — try again.");
-                console.error(err);
-            }
-
-            this.setInputDisabled(false);
-            this.messageInput.focus();
-            return;
-        }
-
-        // NORMAL CHAT MODE
         try {
             const response = await this.callChatAPI(message, studentId);
             this.hideTypingIndicator();
@@ -173,6 +246,7 @@ class ChatbotApp {
     }
 
     addMessage(content, sender, options = {}) {
+        const container = options.container || this.currentMessageContainer;
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}-message`;
 
@@ -205,8 +279,8 @@ class ChatbotApp {
             messageDiv.appendChild(detailsBtn);
         }
 
-        this.messagesContainer.appendChild(messageDiv);
-        this.scrollToBottom();
+        container.appendChild(messageDiv);
+        this.scrollToBottom(container);
     }
 
     showTypingIndicator() {
@@ -225,8 +299,8 @@ class ChatbotApp {
         contentDiv.appendChild(dots);
 
         typingDiv.appendChild(contentDiv);
-        this.messagesContainer.appendChild(typingDiv);
-        this.scrollToBottom();
+        this.currentMessageContainer.appendChild(typingDiv);
+        this.scrollToBottom(this.currentMessageContainer);
     }
 
     hideTypingIndicator() {
@@ -237,7 +311,7 @@ class ChatbotApp {
 
     showError(message) {
         this.addMessage(message, 'bot');
-        const lastMessage = this.messagesContainer.lastElementChild;
+        const lastMessage = this.currentMessageContainer.lastElementChild;
         if (lastMessage && lastMessage.classList.contains('bot-message')) {
             lastMessage.classList.add('error-message');
         }
@@ -249,13 +323,14 @@ class ChatbotApp {
         this.sendButton.textContent = disabled ? 'Sending...' : 'Send';
     }
 
-    scrollToBottom() {
+    scrollToBottom(container = this.currentMessageContainer) {
         setTimeout(() => {
-            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            if (container) {
+                container.scrollTop = container.scrollHeight;
+            }
         }, 100);
     }
 
-    // ⭐ Detect ALL subjects in chatbot response
     detectSubjects(text) {
         const subjects = Object.keys(this.pdfMap);
         const found = [];
@@ -310,7 +385,6 @@ class ChatbotApp {
             }
 
             this.addMessage(response, 'bot', options);
-
         } catch (err) {
             this.hideTypingIndicator();
             this.showError('Sorry, I encountered an error. Please try again.');
@@ -330,7 +404,7 @@ class ChatbotApp {
             detailsDiv.className = 'more-details-content';
 
             if (pdfUrls.length === 0) {
-                detailsDiv.innerHTML = `<p>No relevant PDFs available for these subjects.</p>`;
+                detailsDiv.innerHTML = '<p>No relevant PDFs available for these subjects.</p>';
                 parentMessage.appendChild(detailsDiv);
                 return;
             }
@@ -338,7 +412,7 @@ class ChatbotApp {
             let html = `
                 <div style="margin-top:10px;">
                     <strong style="color:white;">Additional Details</strong>
-                    <p style="color:white;">Here are the study guides for the subjects mentioned:</p>
+                    <p style="color:white;">Use the Quiz tab to practice with the available study guides.</p>
             `;
 
             pdfUrls.forEach((pdfUrl, idx) => {
@@ -360,13 +434,13 @@ class ChatbotApp {
                             border:none;
                             cursor:pointer;
                         " data-pdf="${pdfUrl}">
-                            Quiz Me
+                            Open Quiz Tab
                         </button>
                     </div>
                 `;
             });
 
-            html += `</div>`;
+            html += '</div>';
             detailsDiv.innerHTML = html;
 
             parentMessage.appendChild(detailsDiv);
@@ -377,14 +451,13 @@ class ChatbotApp {
                 btn.textContent = 'Details Loaded';
             }
 
-            // Attach quiz buttons
-            detailsDiv.querySelectorAll('.quiz-me-btn').forEach(btn => {
+            detailsDiv.querySelectorAll('.quiz-me-btn').forEach((btn) => {
                 btn.addEventListener('click', () => {
                     const pdfName = btn.getAttribute('data-pdf');
+                    this.switchTab('quiz');
                     this.startQuizFromPDF(pdfName);
                 });
             });
-
         } catch (error) {
             console.error(error);
             this.showError('Unable to load additional details.');
@@ -392,13 +465,17 @@ class ChatbotApp {
     }
 
     async startQuizFromPDF(pdfName) {
-        this.addMessage("Starting quiz based on the PDF…", "bot");
+        this.switchTab('quiz');
+        this.quizMessagesContainer.innerHTML = '';
+        this.quizResults = [];
+        this.currentQuizQuestion = '';
+        this.addMessage('Starting quiz based on the PDF…', 'bot');
         this.showTypingIndicator();
 
         try {
             const response = await fetch(`${this.apiBaseUrl}/api/chat/quiz-from-pdf`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ pdfName })
             });
 
@@ -410,23 +487,44 @@ class ChatbotApp {
 
             if (quizId && firstQuestion) {
                 this.currentQuizId = quizId;
-                this.addMessage(firstQuestion, "bot");
+                this.currentQuizQuestion = firstQuestion;
+                this.addMessage(firstQuestion, 'bot');
             } else {
-                this.addMessage("Unable to start quiz.", "bot");
+                this.addMessage('Unable to start quiz.', 'bot');
             }
-
         } catch (err) {
             this.hideTypingIndicator();
-            this.showError("Unable to start quiz.");
+            this.showError('Unable to start quiz.');
             console.error(err);
         }
     }
 
-    // ⭐ Quiz Summary Renderer
-    showQuizSummary(summary) {
-        if (!summary) return;
+    getImprovementAreas(results) {
+        const incorrect = results.filter((entry) => !entry.correct);
 
-        const { totalQuestions, correct, incorrect, percentage, results } = summary;
+        if (incorrect.length === 0) {
+            return ['Great job — no improvement areas detected.'];
+        }
+
+        return incorrect.map((entry) => {
+            const cleaned = (entry.question || '')
+                .replace(/^[^a-z0-9]+/i, '')
+                .split(/[?!.:;]/)[0]
+                .trim();
+
+            return cleaned.length > 0 ? cleaned : 'Review the quiz concepts again.';
+        }).slice(0, 3);
+    }
+
+    showQuizSummary() {
+        const results = this.quizResults;
+        if (!results || results.length === 0) return;
+
+        const totalQuestions = results.length;
+        const correct = results.filter((result) => result.correct).length;
+        const incorrect = totalQuestions - correct;
+        const percentage = Math.round((correct / totalQuestions) * 100);
+        const improvementAreas = this.getImprovementAreas(results);
 
         const summaryDiv = document.createElement('div');
         summaryDiv.className = 'quiz-summary';
@@ -434,27 +532,32 @@ class ChatbotApp {
         summaryDiv.innerHTML = `
             <div style="margin-top:20px; padding:15px; border-radius:8px; background:#222; color:white;">
                 <h3>📊 Quiz Summary</h3>
-                <p><strong>Total Questions:</strong> ${totalQuestions}</p>
+                <p><strong>Score:</strong> ${correct}/${totalQuestions} (${percentage}%)</p>
                 <p><strong>Correct:</strong> ${correct}</p>
                 <p><strong>Incorrect:</strong> ${incorrect}</p>
-                <p><strong>Score:</strong> ${percentage}%</p>
+                <p><strong>Needs improvement:</strong> ${incorrect > 0 ? 'Yes' : 'No'}</p>
 
-                <h4 style="margin-top:15px;">Your Answers:</h4>
+                <h4 style="margin-top:15px;">Where to improve</h4>
+                <ul style="padding-left:20px; margin-top:8px;">
+                    ${improvementAreas.map((area) => `<li style="margin-bottom:8px;">${area}</li>`).join('')}
+                </ul>
+
+                <h4 style="margin-top:15px;">Your Answers</h4>
                 <ul style="padding-left:20px;">
-                    ${results.map(r => `
-                        <li style="margin-bottom:15px;">
-                            <strong>Q:</strong> ${r.question}<br>
-                            <strong>A:</strong> ${r.answer}<br>
-                            <strong>Result:</strong> ${r.correct ? "✅ Correct" : "❌ Incorrect"}<br>
-                            <em>${r.explanation}</em>
+                    ${results.map((result) => `
+                        <li style="margin-bottom:12px;">
+                            <strong>Q:</strong> ${result.question}<br>
+                            <strong>A:</strong> ${result.answer}<br>
+                            <strong>Result:</strong> ${result.correct ? '✅ Correct' : '❌ Incorrect'}<br>
+                            <em>${result.explanation}</em>
                         </li>
                     `).join('')}
                 </ul>
             </div>
         `;
 
-        this.messagesContainer.appendChild(summaryDiv);
-        this.scrollToBottom();
+        this.quizMessagesContainer.appendChild(summaryDiv);
+        this.scrollToBottom(this.quizMessagesContainer);
     }
 }
 

@@ -19,23 +19,52 @@
             </div>
         </header>
 
-        <div class="chat-container">
-            <div id="chat-messages" class="chat-messages">
-                <div class="message bot-message">
-                    <div class="message-content">
-                        Hello! I'm your ParentPulse assistant. How can I help you today?
+        <div class="main-shell">
+            <div class="content-panel">
+                <section id="chat-panel" class="view-panel is-active" role="tabpanel">
+                    <div class="chat-container">
+                        <div id="chat-messages" class="chat-messages">
+                            <div class="message bot-message">
+                                <div class="message-content">
+                                    Hello! I'm your ParentPulse assistant. How can I help you today?
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="action-buttons" id="action-buttons">
+                            <button id="btn-upcoming-tests" class="action-btn">Upcoming Tests</button>
+                            <button id="btn-upcoming-due" class="action-btn">Upcoming Due Dates</button>
+                            <button id="btn-lowest-grade" class="action-btn">Lowest Grade</button>
+                            <button id="btn-missing-assignments" class="action-btn">Missing Assignments</button>
+                        </div>
                     </div>
-                </div>
+                </section>
+
+                <section id="quiz-panel" class="view-panel" role="tabpanel">
+                    <div class="quiz-container">
+                        <div class="quiz-header">
+                            <div>
+                                <h2>Study Quizzes</h2>
+                                <p>Select one of the available study guides to start a quiz.</p>
+                            </div>
+                            <button id="back-to-chat-btn" class="back-to-chat-btn" type="button">Back to Chat</button>
+                        </div>
+                        <div id="quiz-options" class="quiz-options"></div>
+                        <div id="quiz-messages" class="quiz-messages">
+                            <div class="message bot-message">
+                                <div class="message-content">
+                                    Choose a study guide to begin practicing.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
 
-            <div class="action-buttons" id="action-buttons">
-                <button id="btn-upcoming-tests" class="action-btn">Upcoming Tests</button>
-                <button id="btn-upcoming-due" class="action-btn">Upcoming Due Dates</button>
-                <button id="btn-lowest-grade" class="action-btn">Lowest Grade</button>
-                <button id="btn-missing-assignments" class="action-btn">Missing Assignments</button>
+            <div class="tab-bar" role="tablist" aria-label="Main views">
+                <button class="tab-btn is-active" id="tab-chat" data-tab="chat" role="tab" aria-selected="true">Chat</button>
+                <button class="tab-btn" id="tab-quiz" data-tab="quiz" role="tab" aria-selected="false">Quiz</button>
             </div>
-
-            <!-- Admin uploads are handled server-side; no client upload UI shown -->
 
             <div class="input-container">
                 <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off">
