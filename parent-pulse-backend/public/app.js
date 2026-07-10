@@ -16,7 +16,7 @@ class ChatbotApp {
         this.quizPanel = document.getElementById('quiz-panel');
         this.tabButtons = document.querySelectorAll('.tab-btn');
         this.quizOptionsContainer = document.getElementById('quiz-options');
-        this.backToChatButton = document.getElementById('back-to-chat-btn');
+        //this.backToChatButton = document.getElementById('back-to-chat-btn');
 
         this.apiBaseUrl = window.location.origin;
         this.isTyping = false;
@@ -73,9 +73,9 @@ class ChatbotApp {
             btn.addEventListener('click', () => this.switchTab(btn.dataset.tab));
         });
 
-        if (this.backToChatButton) {
-            this.backToChatButton.addEventListener('click', () => this.switchTab('chat'));
-        }
+        // if (this.backToChatButton) {
+        //     this.backToChatButton.addEventListener('click', () => this.switchTab('chat'));
+        // }
 
         this.renderQuizButtons();
 
