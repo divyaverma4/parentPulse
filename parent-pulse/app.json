@@ -46,7 +46,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "apiBaseUrl": "https://ashlea-nonumbilical-superably.ngrok-free.dev"
+      "apiBaseUrl": "https://parentpulse-production-f710.up.railway.app/"
     }
   }
 }
