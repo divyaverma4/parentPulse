@@ -39,14 +39,20 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
     "extra": {
-      "apiBaseUrl": "https://parentpulse-production-f710.up.railway.app/"
+      "apiBaseUrl": "https://parentpulse-production-f710.up.railway.app",
+      "router": {},
+      "eas": {
+        "projectId": "7dd6e5f0-3593-42d8-8421-76264a5b7f84"
+      }
     }
   }
 }
