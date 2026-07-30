@@ -40,21 +40,7 @@ export default function Chatbot() {
         ParentPulse Chatbot
       </Text>
 
-      <View style={{ marginBottom: 15 }}>
-        <Text>Student ID:</Text>
-        <TextInput
-          value={studentId}
-          onChangeText={setStudentId}
-          keyboardType="numeric"
-          style={{
-            borderWidth: 1,
-            borderColor: "#ccc",
-            padding: 8,
-            borderRadius: 6,
-            marginTop: 5
-          }}
-        />
-      </View>
+      
 
       <ScrollView style={{ flex: 1, marginBottom: 10 }}>
         {messages.map((msg, i) => (

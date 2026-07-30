@@ -5,7 +5,8 @@ import {
   Text,
   StyleSheet,
 } from "react-native";
-import sampleReport from "@/sampleReport.json";
+
+const sampleReport: { entries?: any[] } = { entries: [] };
 
 interface ActionButtonsProps {
   studentId: string;
