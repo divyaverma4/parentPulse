@@ -13,6 +13,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[themeMode].tint,
+        tabBarHideOnKeyboard: false,
         tabBarStyle: {
           backgroundColor: themeMode === 'dark' ? '#0f172a' : '#ffffff',
           borderTopColor: themeMode === 'dark' ? '#1e293b' : '#e5e7eb',

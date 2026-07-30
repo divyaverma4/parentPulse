@@ -422,7 +422,7 @@ export default function HomeScreen() {
   }, [subjects]);
 
   const openSubjectChat = (item: SubjectItem) => {
-    router.push({ pathname: '/chat', params: buildSubjectChatParams(item) as any });
+    router.push({ pathname: '/(tabs)/explore', params: buildSubjectChatParams(item) as any });
   };
 
   const palette = useMemo(
