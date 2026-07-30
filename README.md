@@ -2,6 +2,8 @@
 
 A JavaScript chatbot application with Supabase and OpenAI integration, featuring both API endpoints and a mobile-friendly web frontend.
 
+https://parent-pulse--rkkl1glxz7.expo.app/
+
 ## Features
 
 - 🤖 AI-powered chatbot using OpenAI
