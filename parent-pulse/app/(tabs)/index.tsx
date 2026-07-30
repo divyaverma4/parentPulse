@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
 import { useAppTheme } from '@/contexts/app-theme-context';
 
 type Status = 'Action Recommended' | 'Needs Attention' | 'On Track';
@@ -83,15 +84,13 @@ const SAMIR_STUDENT_ID = '12345';
 
 function normalizeCourseName(raw: string) {
   const value = raw.toLowerCase();
-  if (value.includes('pre-algebra') || value.includes('algebra')) return 'Algebra';
-  if (value.includes('english language arts') || value.includes('ela')) return 'English';
-  if (value.includes('science')) return 'Science';
-  if (value.includes('social studies') || value.includes('history')) return 'History';
-  if (value.includes('world language') || value.includes('spanish')) return 'Spanish';
-  if (value.includes('physical education') || value.includes('pe')) return 'PE';
-  if (value.includes('drama') || value.includes('media') || value.includes('music') || value.includes('art')) {
-    return 'Art';
-  }
+  if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Algebra';
+  if (/(english|language arts|ela|reading)/.test(value)) return 'English';
+  if (/(science|biology|chemistry|physics)/.test(value)) return 'Science';
+  if (/(social studies|history|civics|government|world history)/.test(value)) return 'History';
+  if (/(world language|spanish|french|german|latin|mandarin|japanese)/.test(value)) return 'Spanish';
+  if (/(physical education|pe|health|fitness)/.test(value)) return 'PE';
+  if (/(drama|media|music|art|band|choir)/.test(value)) return 'Art';
   return '';
 }
 
@@ -127,6 +126,37 @@ function extractIssues(assignments: any[]) {
         (a.pts / a.max) * 100 < 75
     )
     .map((a) => `${a.name}: ${Math.round((a.pts / a.max) * 100)}%`);
+}
+
+function summarizeIssueList(issues: string[]) {
+  const deduped = [...new Set(issues)];
+  if (deduped.length <= 3) return deduped;
+  return [...deduped.slice(0, 3), `+${deduped.length - 3} more low-scoring assignments`];
+}
+
+function buildSubjectChatParams(subjectItem: SubjectItem) {
+  return {
+    studentId: SAMIR_STUDENT_ID,
+    source: 'home-subject',
+    title: `Discuss ${subjectItem.subject}`,
+    subject: subjectItem.subject,
+    status: subjectItem.status,
+    why: subjectItem.why,
+    lookingAhead: subjectItem.lookingAhead,
+    signal: subjectItem.signal,
+    aiAssessment:
+      subjectItem.status === 'Action Recommended'
+        ? `Action Recommended: ${subjectItem.subject} needs a targeted recovery plan.`
+        : subjectItem.status === 'Needs Attention'
+        ? `Needs Attention: ${subjectItem.subject} should be monitored closely this week.`
+        : `On Track: ${subjectItem.subject} is stable and should keep momentum.`,
+    issues: subjectItem.issues.join('||'),
+    suggested: [
+      `What should I ask my child about ${subjectItem.subject} tonight?`,
+      `What is the best next step for ${subjectItem.subject} this week?`,
+      `Can you draft a parent action plan for ${subjectItem.subject}?`,
+    ].join('||'),
+  };
 }
 
 function summarizeData(
@@ -239,7 +269,7 @@ function summarizeData(
         ? bucket.grades.reduce((sum, g) => sum + g, 0) / bucket.grades.length
         : null;
 
-    const dedupedIssues = [...new Set(bucket.lowIssues)];
+    const dedupedIssues = summarizeIssueList(bucket.lowIssues);
 
     let status: Status = 'On Track';
     if (bucket.missingCount > 0 || (avgGrade !== null && avgGrade < 80)) {
@@ -249,11 +279,16 @@ function summarizeData(
     }
 
     const hasUpcoming = bucket.signal === 'Upcoming Test' || bucket.signal === 'Upcoming Project';
-    const why =
+    const issueLabel =
       dedupedIssues.length > 0
-        ? `${subject} has ${dedupedIssues.length} current issue${
-            dedupedIssues.length > 1 ? 's' : ''
-          }.`
+        ? dedupedIssues.length > 3
+          ? 'multiple current issues'
+          : `${dedupedIssues.length} current issue${dedupedIssues.length > 1 ? 's' : ''}`
+        : '';
+
+    const why =
+      issueLabel
+        ? `${subject} has ${issueLabel}.`
         : hasUpcoming
         ? `${subject} performance is stable with upcoming checkpoints.`
         : `${subject} is stable with no active risk flags.`;
@@ -386,6 +421,10 @@ export default function HomeScreen() {
     ];
   }, [subjects]);
 
+  const openSubjectChat = (item: SubjectItem) => {
+    router.push({ pathname: '/chat', params: buildSubjectChatParams(item) as any });
+  };
+
   const palette = useMemo(
     () => ({
       screenBg: isDark ? '#020617' : '#f4f6ff',
@@ -432,7 +471,7 @@ export default function HomeScreen() {
         {loading && (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="small" color="#2563eb" />
-            <Text style={[styles.loadingText, { color: palette.loadingText }]}>Loading Samir's latest data...</Text>
+            <Text style={[styles.loadingText, { color: palette.loadingText }]}>Loading Samir&apos;s latest data...</Text>
           </View>
         )}
 
@@ -460,7 +499,7 @@ export default function HomeScreen() {
 
         <View style={[styles.card, { backgroundColor: palette.cardBg, borderColor: palette.border }]}> 
           <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: palette.text }]}>Today's Priorities</Text>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>Today&apos;s Priorities</Text>
             <Text style={styles.sectionHint}>Top recommendations</Text>
           </View>
 
@@ -498,9 +537,11 @@ export default function HomeScreen() {
             const style = STATUS_STYLES[item.status];
             const subjectColor = SUBJECT_COLORS[item.subject] || style.dot;
             return (
-              <View
+              <TouchableOpacity
                 key={item.id}
                 style={[styles.subjectRow, { borderTopColor: palette.rowBorder }]}
+                onPress={() => openSubjectChat(item)}
+                activeOpacity={0.8}
               >
                 <View style={styles.subjectLeft}>
                   <View style={[styles.subjectDot, { backgroundColor: subjectColor }]} />
@@ -511,7 +552,7 @@ export default function HomeScreen() {
                     <Text style={[styles.statusChipText, { color: style.chipText }]}>{item.status}</Text>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
