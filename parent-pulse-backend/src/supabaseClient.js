@@ -183,11 +183,21 @@ export async function getStudentInfo(studentUserId) {
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('user_id', studentUserId)
-      .single();
+      .eq('user_id', studentUserId);
     
     if (error) throw error;
-    return data;
+
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    if (data.length > 1) {
+      console.warn(
+        `[getStudentInfo] Multiple user rows found for user_id=${studentUserId}. Using first row.`
+      );
+    }
+
+    return data[0];
   } catch (error) {
     console.error('Error fetching student info:', error);
     throw error;
