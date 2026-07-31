@@ -80,7 +80,7 @@ const SUBJECT_COLORS: Record<string, string> = {
   Art: '#8b5cf6',
 };
 
-const SAMIR_STUDENT_ID = '12345';
+const SAMIR_STUDENT_ID = '1';
 
 function normalizeCourseName(raw: string) {
   const value = raw.toLowerCase();

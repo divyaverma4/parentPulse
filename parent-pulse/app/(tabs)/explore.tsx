@@ -222,7 +222,7 @@ export default function ExploreChatScreen() {
 	const [typing, setTyping] = useState(false);
 
 	const expoExtra = (Constants.expoConfig?.extra as any) || {};
-	const studentId = String(params.studentId || '12345');
+	const studentId = String(params.studentId || '1');
 	const provided = expoExtra.apiBaseUrl;
 	const defaultHost = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
 	const apiBaseUrl = provided || defaultHost;

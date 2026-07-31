@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme as useSystemColorScheme } from 'react-native';
 
 type ThemeMode = 'light' | 'dark';
@@ -13,8 +13,12 @@ const AppThemeContext = createContext<AppThemeContextValue | null>(null);
 
 export function AppThemeProvider({ children }: { children: React.ReactNode }) {
   const system = useSystemColorScheme();
-  const initialMode: ThemeMode = system === 'dark' ? 'dark' : 'light';
-  const [themeMode, setThemeMode] = useState<ThemeMode>(initialMode);
+  // Keep the first render deterministic for web prerender + hydration.
+  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+
+  useEffect(() => {
+    setThemeMode(system === 'dark' ? 'dark' : 'light');
+  }, [system]);
 
   const value = useMemo<AppThemeContextValue>(
     () => ({
