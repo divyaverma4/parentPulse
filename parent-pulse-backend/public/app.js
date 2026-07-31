@@ -18,7 +18,7 @@ class ChatbotApp {
         this.quizOptionsContainer = document.getElementById('quiz-options');
         //this.backToChatButton = document.getElementById('back-to-chat-btn');
 
-        this.apiBaseUrl = "https://parentpulse-production-f710.up.railway.app/";
+        this.apiBaseUrl = "https://parentpulse-production-f710.up.railway.app";
         this.isTyping = false;
         this.currentQuizId = null;
         this.activeTab = 'chat';
