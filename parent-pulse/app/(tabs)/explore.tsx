@@ -333,6 +333,8 @@ export default function ExploreChatScreen() {
 		chipText: isDark ? '#bfdbfe' : '#1d4ed8',
 		bubbleBg: isDark ? '#1f2937' : '#f1f5f9',
 		inputBg: isDark ? '#111827' : '#f8fafc',
+		errorBubble: isDark ? '#7f1d1d' : '#fee2e2',
+		errorText: isDark ? '#fecaca' : '#991b1b',
 	};
 
 	const addMessage = (sender: Message['sender'], text: string) => {
@@ -446,11 +448,16 @@ export default function ExploreChatScreen() {
 										m.sender === 'user'
 											? styles.msgUser
 											: m.sender === 'error'
-											? styles.msgError
+											? [styles.msgError, { backgroundColor: palette.errorBubble }]
 											: { backgroundColor: palette.bubbleBg },
 									]}
 								>
-									<Text style={[styles.msgText, { color: m.sender === 'user' ? '#fff' : palette.text }]}>
+										<Text
+											style={[
+												styles.msgText,
+												{ color: m.sender === 'user' ? '#fff' : m.sender === 'error' ? palette.errorText : palette.text },
+											]}
+										>
 										{m.text}
 									</Text>
 								</View>
