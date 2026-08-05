@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -69,16 +70,6 @@ const STATUS_STYLES: Record<Status, { dot: string; chipBg: string; chipText: str
 };
 
 const SUBJECT_ORDER = ['English', 'Algebra', 'Science', 'History', 'Spanish', 'PE', 'Art'];
-
-const SUBJECT_COLORS: Record<string, string> = {
-  English: '#ef4444',
-  Algebra: '#f59e0b',
-  Science: '#22c55e',
-  History: '#16a34a',
-  Spanish: '#14b8a6',
-  PE: '#3b82f6',
-  Art: '#8b5cf6',
-};
 
 const SAMIR_STUDENT_ID = '1';
 
@@ -155,6 +146,31 @@ function buildSubjectChatParams(subjectItem: SubjectItem) {
       `What should I ask my child about ${subjectItem.subject} tonight?`,
       `What is the best next step for ${subjectItem.subject} this week?`,
       `Can you draft a parent action plan for ${subjectItem.subject}?`,
+    ].join('||'),
+  };
+}
+
+function buildPriorityChatParams(priorityItem: PriorityItem) {
+  return {
+    studentId: SAMIR_STUDENT_ID,
+    source: 'home-priority',
+    title: priorityItem.title,
+    subject: priorityItem.subject,
+    status: priorityItem.status,
+    why: priorityItem.why,
+    lookingAhead: priorityItem.lookingAhead,
+    signal: priorityItem.signal,
+    aiAssessment:
+      priorityItem.status === 'Action Recommended'
+        ? `${priorityItem.subject} is action recommended. Focus on immediate parent-teacher alignment.`
+        : priorityItem.status === 'Needs Attention'
+        ? `${priorityItem.subject} needs attention. Monitor this week and coach daily habits.`
+        : `${priorityItem.subject} is on track. Keep consistent routines in place.`,
+    issues: priorityItem.issues.join('||'),
+    suggested: [
+      `What is the best immediate step for ${priorityItem.subject}?`,
+      `What should I ask my child tonight about ${priorityItem.subject}?`,
+      `Can you draft a focused plan for ${priorityItem.subject} this week?`,
     ].join('||'),
   };
 }
@@ -425,6 +441,10 @@ export default function HomeScreen() {
     router.push({ pathname: '/(tabs)/explore', params: buildSubjectChatParams(item) as any });
   };
 
+  const openPriorityChat = (item: PriorityItem) => {
+    router.push({ pathname: '/(tabs)/explore', params: buildPriorityChatParams(item) as any });
+  };
+
   const palette = useMemo(
     () => ({
       screenBg: isDark ? '#020617' : '#f4f6ff',
@@ -505,11 +525,15 @@ export default function HomeScreen() {
 
           {priorities.map((item) => {
             const style = STATUS_STYLES[item.status];
-            const subjectColor = SUBJECT_COLORS[item.subject] || style.dot;
             return (
-              <View
+              <Pressable
                 key={item.id}
-                style={[styles.priorityRow, { backgroundColor: palette.rowBg, borderColor: palette.rowBorder }]}
+                style={({ pressed }) => [
+                  styles.priorityRow,
+                  { backgroundColor: palette.rowBg, borderColor: palette.rowBorder },
+                  pressed && styles.rowPressed,
+                ]}
+                onPress={() => openPriorityChat(item)}
               >
                 <Ionicons
                   name={iconForStatus(item.status)}
@@ -517,7 +541,7 @@ export default function HomeScreen() {
                   color={style.dot}
                   style={styles.priorityIcon}
                 />
-                <View style={[styles.leftAccent, { backgroundColor: subjectColor }]} />
+                <View style={[styles.leftAccent, { backgroundColor: style.dot }]} />
                 <View style={styles.priorityTextWrap}>
                   <Text style={[styles.priorityTitle, { color: palette.text }]}>{item.title}</Text>
                   <Text style={[styles.priorityBody, { color: palette.subText }]}>{item.why}</Text>
@@ -525,7 +549,7 @@ export default function HomeScreen() {
                 <View style={[styles.statusChip, { backgroundColor: style.chipBg }]}>
                   <Text style={[styles.statusChipText, { color: style.chipText }]}>{item.status}</Text>
                 </View>
-              </View>
+              </Pressable>
             );
           })}
         </View>
@@ -535,24 +559,30 @@ export default function HomeScreen() {
 
           {subjects.map((item) => {
             const style = STATUS_STYLES[item.status];
-            const subjectColor = SUBJECT_COLORS[item.subject] || style.dot;
+            const subjectColor = style.dot;
             return (
-              <TouchableOpacity
+              <Pressable
                 key={item.id}
-                style={[styles.subjectRow, { borderTopColor: palette.rowBorder }]}
+                style={({ pressed }) => [
+                  styles.subjectRow,
+                  { borderTopColor: palette.rowBorder },
+                  pressed && styles.rowPressed,
+                ]}
                 onPress={() => openSubjectChat(item)}
-                activeOpacity={0.8}
               >
                 <View style={styles.subjectLeft}>
                   <View style={[styles.subjectDot, { backgroundColor: subjectColor }]} />
-                  <Text style={[styles.subjectText, { color: palette.text }]}>{item.subject}</Text>
+                  <View style={styles.subjectTitleRow}>
+                    <Text style={[styles.subjectText, { color: palette.text }]}>{item.subject}</Text>
+                    <Ionicons name="chevron-forward" size={14} color={palette.subText} style={styles.subjectArrow} />
+                  </View>
                 </View>
                 <View style={styles.subjectRight}>
                   <View style={[styles.statusChip, { backgroundColor: style.chipBg }]}>
                     <Text style={[styles.statusChipText, { color: style.chipText }]}>{item.status}</Text>
                   </View>
                 </View>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
@@ -761,6 +791,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  subjectTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  subjectArrow: {
+    marginTop: 1,
+  },
   subjectDot: {
     width: 10,
     height: 10,
@@ -775,5 +813,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  rowPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.99 }],
   },
 });
