@@ -61,12 +61,13 @@ function normalizeStatus(value?: string): Status {
 
 function normalizeCourseName(raw: string) {
 	const value = String(raw || '').toLowerCase();
-	if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Algebra';
-	if (/(english|language arts|ela|reading)/.test(value)) return 'English';
+	if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Pre-Algebra';
+	if (/(english|language arts|ela|reading)/.test(value)) return 'English Language Arts';
+	if (/(religion|theology|faith)/.test(value)) return 'Religion';
 	if (/(science|biology|chemistry|physics)/.test(value)) return 'Science';
-	if (/(social studies|history|civics|government|world history)/.test(value)) return 'History';
-	if (/(world language|spanish|french|german|latin|mandarin|japanese)/.test(value)) return 'Spanish';
-	if (/(physical education|pe|health|fitness)/.test(value)) return 'PE';
+	if (/(social studies|history|civics|government|world history)/.test(value)) return 'Social Studies';
+	if (/(world language|spanish|french|german|latin|mandarin|japanese)/.test(value)) return 'World Language';
+	if (/(physical education|\bpe\b|health|fitness)/.test(value)) return 'Physical Education';
 	if (/(drama|media|music|art|band|choir)/.test(value)) return 'Art';
 	return '';
 }
