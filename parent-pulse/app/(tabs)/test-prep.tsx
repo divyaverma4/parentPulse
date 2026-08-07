@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { useAppTheme } from '@/contexts/app-theme-context';
@@ -196,6 +196,9 @@ export default function TestPrepScreen() {
   const [subjectsError, setSubjectsError] = useState<string | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<SubjectQuiz | null>(null);
   const [questionIndex, setQuestionIndex] = useState(0);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [feedbackTitle, setFeedbackTitle] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState('');
 
   const expoExtra = (Constants.expoConfig?.extra as any) || {};
   const provided = expoExtra.apiBaseUrl;
@@ -297,22 +300,20 @@ export default function TestPrepScreen() {
     if (!currentQuestion || !selectedSubject) return;
 
     const isCorrect = selectedIndex === currentQuestion.correctIndex;
-    Alert.alert(
-      isCorrect ? 'Correct' : 'Incorrect',
+    setFeedbackTitle(isCorrect ? 'Correct' : 'Incorrect');
+    setFeedbackMessage(
       isCorrect
         ? 'Nice work. Keep going.'
-        : `The right answer is: ${currentQuestion.options[currentQuestion.correctIndex]}`,
-      [
-        {
-          text: questionIndex < selectedSubject.questions.length - 1 ? 'Next Question' : 'Done',
-          onPress: () => {
-            if (questionIndex < selectedSubject.questions.length - 1) {
-              setQuestionIndex((prev) => prev + 1);
-            }
-          },
-        },
-      ]
+        : `The right answer is: ${currentQuestion.options[currentQuestion.correctIndex]}`
     );
+    setFeedbackVisible(true);
+  }
+
+  function handleFeedbackContinue() {
+    if (selectedSubject && questionIndex < selectedSubject.questions.length - 1) {
+      setQuestionIndex((prev) => prev + 1);
+    }
+    setFeedbackVisible(false);
   }
 
   return (
@@ -361,6 +362,7 @@ export default function TestPrepScreen() {
               {currentQuestion?.options.map((option, index) => (
                 <Pressable
                   key={option}
+                  disabled={feedbackVisible}
                   onPress={() => handleAnswerSelect(index)}
                   style={[styles.optionButton, { backgroundColor: colors.optionBg, borderColor: colors.border }]}>
                   <Text style={[styles.optionText, { color: colors.text }]}>{option}</Text>
@@ -376,6 +378,26 @@ export default function TestPrepScreen() {
           </View>
         )}
       </View>
+
+      <Modal
+        visible={feedbackVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFeedbackVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{feedbackTitle}</Text>
+            <Text style={[styles.modalMessage, { color: colors.subtleText }]}>{feedbackMessage}</Text>
+            <Pressable
+              style={[styles.modalButton, { backgroundColor: colors.accent }]}
+              onPress={handleFeedbackContinue}>
+              <Text style={styles.modalButtonText}>
+                {selectedSubject && questionIndex < selectedSubject.questions.length - 1 ? 'Next Question' : 'Done'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -485,5 +507,38 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(2, 6, 23, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+  },
+  modalCard: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 18,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 15,
+    lineHeight: 21,
+    marginBottom: 16,
+  },
+  modalButton: {
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
