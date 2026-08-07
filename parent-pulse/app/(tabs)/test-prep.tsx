@@ -153,6 +153,40 @@ const SUBJECT_QUIZZES: SubjectQuiz[] = [
       },
     ],
   },
+  {
+    subject: 'PE',
+    questions: [
+      {
+        id: 'pe-1',
+        prompt: 'How many minutes should you exercise daily?',
+        options: ['10', '20', '30', '60'],
+        correctIndex: 2,
+      },
+      {
+        id: 'pe-2',
+        prompt: 'Which activity improves cardiovascular health?',
+        options: ['Running', 'Reading', 'Painting', 'Sleeping'],
+        correctIndex: 0,
+      },
+    ],
+  },
+  {
+    subject: 'Art',
+    questions: [
+      {
+        id: 'art-1',
+        prompt: 'Who painted the Mona Lisa?',
+        options: ['Vincent van Gogh', 'Pablo Picasso', 'Leonardo da Vinci', 'Claude Monet'],
+        correctIndex: 2,
+      },
+      {
+        id: 'art-2',
+        prompt: 'What is the primary medium used in watercolor painting?',
+        options: ['Oil paints', 'Acrylic paints', 'Water-based paints', 'Charcoal'],
+        correctIndex: 2,
+      },
+    ],
+  }
 ];
 
 export default function TestPrepScreen() {
