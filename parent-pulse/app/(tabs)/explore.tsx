@@ -12,7 +12,7 @@ import {
 	View,
 } from 'react-native';
 import Constants from 'expo-constants';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useAppTheme } from '@/contexts/app-theme-context';
 
 type Status = 'Action Recommended' | 'Needs Attention' | 'On Track';
@@ -261,6 +261,7 @@ export default function ExploreChatScreen() {
 		[fallbackParams, params, studentId]
 	);
 	const assessment = useMemo(() => deriveAssessmentFromParams(effectiveParams), [effectiveParams]);
+	const showTestPrepLink = hasRouteContext && assessment.subject && assessment.subject !== 'General';
 
 	useEffect(() => {
 		let active = true;
@@ -432,6 +433,19 @@ export default function ExploreChatScreen() {
 									<Text style={[styles.questionChipText, { color: palette.chipText }]}>{q}</Text>
 								</TouchableOpacity>
 							))}
+							{showTestPrepLink && (
+								<TouchableOpacity
+									style={[styles.testPrepChip, { backgroundColor: palette.chipBg }]}
+									onPress={() =>
+										router.push({
+											pathname: '/(tabs)/test-prep' as never,
+											params: { subject: assessment.subject },
+										} as never)
+									}
+								>
+									<Text style={[styles.testPrepChipText, { color: palette.chipText }]}>Test Prep</Text>
+								</TouchableOpacity>
+							)}
 						</View>
 					</View>
 
@@ -522,6 +536,14 @@ const styles = StyleSheet.create({
 	suggestedWrap: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 	questionChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 8 },
 	questionChipText: { fontSize: 12, fontWeight: '700' },
+	testPrepChip: {
+		borderRadius: 999,
+		paddingHorizontal: 14,
+		paddingVertical: 8,
+		borderWidth: 1,
+		borderColor: '#2563eb22',
+	},
+	testPrepChipText: { fontSize: 12, fontWeight: '800' },
 	msgRow: { marginTop: 8 },
 	msgLeft: { alignItems: 'flex-start' },
 	msgRight: { alignItems: 'flex-end' },
