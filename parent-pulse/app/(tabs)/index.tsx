@@ -69,20 +69,39 @@ const STATUS_STYLES: Record<Status, { dot: string; chipBg: string; chipText: str
   'On Track': { dot: '#22c55e', chipBg: '#dcfce7', chipText: '#15803d' },
 };
 
-const SUBJECT_ORDER = ['English', 'Algebra', 'Science', 'History', 'Spanish', 'PE', 'Art'];
+const SUBJECT_ORDER = [
+  'English Language Arts',
+  'Pre-Algebra',
+  'Religion',
+  'Science',
+  'Social Studies',
+  'World Language',
+  'Physical Education',
+  'Art',
+];
 
 const SAMIR_STUDENT_ID = '1';
 
 function normalizeCourseName(raw: string) {
-  const value = raw.toLowerCase();
-  if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Algebra';
-  if (/(english|language arts|ela|reading)/.test(value)) return 'English';
+  const value = String(raw || '').toLowerCase();
+  if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Pre-Algebra';
+  if (/(english|language arts|ela|reading)/.test(value)) return 'English Language Arts';
+  if (/(religion|theology|faith)/.test(value)) return 'Religion';
   if (/(science|biology|chemistry|physics)/.test(value)) return 'Science';
-  if (/(social studies|history|civics|government|world history)/.test(value)) return 'History';
-  if (/(world language|spanish|french|german|latin|mandarin|japanese)/.test(value)) return 'Spanish';
-  if (/(physical education|pe|health|fitness)/.test(value)) return 'PE';
+  if (/(social studies|history|civics|government|world history)/.test(value)) return 'Social Studies';
+  if (/(world language|spanish|french|german|latin|mandarin|japanese)/.test(value)) return 'World Language';
+  if (/(physical education|\bpe\b|health|fitness)/.test(value)) return 'Physical Education';
   if (/(drama|media|music|art|band|choir)/.test(value)) return 'Art';
   return '';
+}
+
+function orderedUniqueSubjects(values: string[]) {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    if (!value || seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
 }
 
 function titleForSubject(subject: string, status: Status) {
@@ -264,7 +283,16 @@ function summarizeData(
 
   for (const [name, details] of Object.entries(reportSubjects)) {
     const subject = normalizeCourseName(name);
-    if (!subject || !subjectBuckets[subject]) continue;
+    if (!subject) continue;
+
+    if (!subjectBuckets[subject]) {
+      subjectBuckets[subject] = {
+        grades: [],
+        lowIssues: [],
+        missingCount: 0,
+        signal: 'No Events',
+      };
+    }
 
     const reportSignal = signalFromReport(details);
     if (subjectBuckets[subject].signal === 'No Events' || reportSignal !== 'No Events') {
@@ -272,7 +300,16 @@ function summarizeData(
     }
   }
 
-  const subjects: SubjectItem[] = SUBJECT_ORDER.map((subject, index) => {
+  const subjectsInOrder = orderedUniqueSubjects([
+    ...Object.keys(reportSubjects).map((name) => normalizeCourseName(name)),
+    ...Object.keys(classes).map((name) => normalizeCourseName(name)),
+    ...Object.keys(subjectBuckets),
+  ]);
+
+  const fallbackSubjects = SUBJECT_ORDER.filter((subject) => subjectBuckets[subject]);
+  const subjectsToRender = subjectsInOrder.length > 0 ? subjectsInOrder : fallbackSubjects;
+
+  const subjects: SubjectItem[] = subjectsToRender.map((subject, index) => {
     const bucket = subjectBuckets[subject] || {
       grades: [],
       lowIssues: [],

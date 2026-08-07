@@ -38,7 +38,24 @@ type AverageApiResponse = {
   allGrades?: any[];
 };
 
-const SUBJECT_ORDER = ['English', 'Algebra', 'Science', 'History', 'Spanish', 'PE', 'Art'];
+type BackendReport = {
+  sampleReport?: {
+    entries?: Array<{
+      subjects?: Record<string, any>;
+    }>;
+  } | null;
+};
+
+const SUBJECT_ORDER = [
+  'English Language Arts',
+  'Pre-Algebra',
+  'Religion',
+  'Science',
+  'Social Studies',
+  'World Language',
+  'Physical Education',
+  'Art',
+];
 const STUDENT_ID = '1';
 const STATUS_STYLES: Record<Status, { dot: string; chipBg: string; chipText: string }> = {
   'Action Recommended': { dot: '#ef4444', chipBg: '#fee2e2', chipText: '#b91c1c' },
@@ -48,14 +65,24 @@ const STATUS_STYLES: Record<Status, { dot: string; chipBg: string; chipText: str
 
 function normalizeCourseName(raw: string) {
   const value = String(raw || '').toLowerCase();
-  if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Algebra';
-  if (/(english|language arts|ela|reading)/.test(value)) return 'English';
+  if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Pre-Algebra';
+  if (/(english|language arts|ela|reading)/.test(value)) return 'English Language Arts';
+  if (/(religion|theology|faith)/.test(value)) return 'Religion';
   if (/(science|biology|chemistry|physics)/.test(value)) return 'Science';
-  if (/(social studies|history|civics|government|world history)/.test(value)) return 'History';
-  if (/(world language|spanish|french|german|latin|mandarin|japanese)/.test(value)) return 'Spanish';
-  if (/(physical education|pe|health|fitness)/.test(value)) return 'PE';
+  if (/(social studies|history|civics|government|world history)/.test(value)) return 'Social Studies';
+  if (/(world language|spanish|french|german|latin|mandarin|japanese)/.test(value)) return 'World Language';
+  if (/(physical education|\bpe\b|health|fitness)/.test(value)) return 'Physical Education';
   if (/(drama|media|music|art|band|choir)/.test(value)) return 'Art';
   return '';
+}
+
+function orderedUniqueSubjects(values: string[]) {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    if (!value || seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
 }
 
 function genericQuestionsFor(subject: string): QuizQuestion[] {
@@ -86,14 +113,14 @@ function shuffleQuestions(questions: QuizQuestion[]): QuizQuestion[] {
 
 const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
   {
-    subject: 'Algebra',
+    subject: 'Pre-Algebra',
     questions: [
       { id: 'alg-1', prompt: 'If 3x + 5 = 20, what is x?', options: ['3', '4', '5', '6'], correctIndex: 2 },
       { id: 'alg-2', prompt: 'What is the slope of y = 2x - 7?', options: ['-7', '2', '7', '-2'], correctIndex: 1 },
     ],
   },
   {
-    subject: 'English',
+    subject: 'English Language Arts',
     questions: [
       {
         id: 'eng-1',
@@ -122,7 +149,7 @@ const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
     ],
   },
   {
-    subject: 'History',
+    subject: 'Social Studies',
     questions: [
       { id: 'his-1', prompt: 'Which document begins with "We the People"?', options: ['Declaration of Independence', 'Constitution', 'Bill of Rights', 'Emancipation Proclamation'], correctIndex: 1 },
       {
@@ -134,17 +161,24 @@ const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
     ],
   },
   {
-    subject: 'Spanish',
+    subject: 'World Language',
     questions: [
       { id: 'spa-1', prompt: 'What does "biblioteca" mean in English?', options: ['Book', 'Library', 'Classroom', 'Notebook'], correctIndex: 1 },
       { id: 'spa-2', prompt: 'Choose the correct translation for "I am studying."', options: ['Estoy estudiando.', 'Soy estudiante.', 'Estoy cansado.', 'Tengo estudio.'], correctIndex: 0 },
     ],
   },
   {
-    subject: 'PE',
+    subject: 'Physical Education',
     questions: [
       { id: 'pe-1', prompt: 'How many minutes should you exercise daily?', options: ['10', '20', '30', '60'], correctIndex: 2 },
       { id: 'pe-2', prompt: 'Which activity improves cardiovascular health?', options: ['Running', 'Reading', 'Painting', 'Sleeping'], correctIndex: 0 },
+    ],
+  },
+  {
+    subject: 'Religion',
+    questions: [
+      { id: 'rel-1', prompt: 'In class discussion, what does reflection usually help strengthen?', options: ['Memory and understanding', 'Only handwriting', 'Only speed', 'Only attendance'], correctIndex: 0 },
+      { id: 'rel-2', prompt: 'What is the best first step when reviewing a religion study guide?', options: ['Skip definitions', 'Review key concepts and vocabulary', 'Memorize one sentence only', 'Ignore class notes'], correctIndex: 1 },
     ],
   },
   {
@@ -201,12 +235,22 @@ export default function TestPrepScreen() {
       setSubjectsError(null);
 
       try {
-        const res = await fetch(`${apiBaseUrl}/api/chat/average/${STUDENT_ID}`);
-        if (!res.ok) {
+        const [reportResult, gradesResult] = await Promise.allSettled([
+          fetch(`${apiBaseUrl}/api/report/latest`),
+          fetch(`${apiBaseUrl}/api/chat/average/${STUDENT_ID}`),
+        ]);
+
+        let reportSubjects: Record<string, any> = {};
+        if (reportResult.status === 'fulfilled' && reportResult.value.ok) {
+          const reportPayload = (await reportResult.value.json()) as BackendReport;
+          reportSubjects = reportPayload.sampleReport?.entries?.[0]?.subjects || {};
+        }
+
+        if (gradesResult.status !== 'fulfilled' || !gradesResult.value.ok) {
           throw new Error('Failed to load enrolled subjects');
         }
 
-        const payload = (await res.json()) as AverageApiResponse;
+        const payload = (await gradesResult.value.json()) as AverageApiResponse;
         const seen = new Set<string>();
         const buckets: Record<string, { grades: number[]; missingCount: number }> = {};
 
@@ -240,10 +284,15 @@ export default function TestPrepScreen() {
           }
         }
 
-        const enrolled = SUBJECT_ORDER.filter((subject) => seen.has(subject));
-        const derivedSubjects = enrolled.length > 0 ? enrolled : SUBJECT_ORDER;
+        const derivedSubjects = orderedUniqueSubjects([
+          ...Object.keys(reportSubjects).map((name) => normalizeCourseName(name)),
+          ...SUBJECT_ORDER.filter((subject) => seen.has(subject)),
+          ...Array.from(seen),
+        ]);
 
-        const quizzes = derivedSubjects.map((subject) => {
+        const subjectsToRender = derivedSubjects.length > 0 ? derivedSubjects : SUBJECT_ORDER;
+
+        const quizzes = subjectsToRender.map((subject) => {
           const bucket = buckets[subject] || { grades: [], missingCount: 0 };
           const avgGrade =
             bucket.grades.length > 0
