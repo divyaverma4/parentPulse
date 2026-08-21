@@ -38,6 +38,8 @@ type PriorityItem = {
 type SubjectItem = {
   id: string;
   subject: string;
+  averageGrade: number | null;
+  letterGrade: string;
   status: Status;
   signal: ContextSignal;
   why: string;
@@ -114,6 +116,14 @@ function iconForStatus(status: Status) {
   if (status === 'Action Recommended') return 'alert-circle';
   if (status === 'Needs Attention') return 'help-circle';
   return 'checkmark-circle';
+}
+
+function letterGradeFromAverage(avgGrade: number | null) {
+  if (avgGrade === null) return 'N/A';
+  if (avgGrade >= 97) return 'A+';
+  if (avgGrade >= 93) return 'A';
+  if (avgGrade >= 90) return 'A-';
+  return 'Below A-';
 }
 
 function signalFromReport(reportSubject: any): ContextSignal {
@@ -358,6 +368,8 @@ function summarizeData(
     return {
       id: `s${index + 1}`,
       subject,
+      averageGrade: avgGrade,
+      letterGrade: letterGradeFromAverage(avgGrade),
       status,
       signal: bucket.signal,
       why,
@@ -615,6 +627,9 @@ export default function HomeScreen() {
                   </View>
                 </View>
                 <View style={styles.subjectRight}>
+                  <View style={[styles.gradeChip, item.letterGrade === 'Below A-' && styles.gradeChipRisk]}>
+                    <Text style={styles.gradeChipText}>{item.letterGrade}</Text>
+                  </View>
                   <View style={[styles.statusChip, { backgroundColor: style.chipBg }]}>
                     <Text style={[styles.statusChipText, { color: style.chipText }]}>{item.status}</Text>
                   </View>
@@ -847,9 +862,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   subjectRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  gradeChip: {
+    backgroundColor: '#dbeafe',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  gradeChipRisk: {
+    backgroundColor: '#fee2e2',
+  },
+  gradeChipText: {
+    color: '#1e3a8a',
+    fontSize: 12,
+    fontWeight: '800',
   },
   rowPressed: {
     opacity: 0.88,
