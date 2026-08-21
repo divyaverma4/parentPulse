@@ -109,6 +109,21 @@ function isTrendQuery(question) {
   return /\b(trend|improv|getting\s+(better|worse)|going\s+(up|down)|declin|progress|over\s+time|throughout|trajectory|how\s+is\s+he\s+doing\s+over)\b/i.test(question);
 }
 
+// Advice / conversation-starter / plan requests should always go through the LLM for a
+// real answer instead of the raw grade-data lookups below, even if they mention a
+// subject name, GPA, or a time period like "this week".
+function isAdvisoryQuery(question) {
+  return /\b(what should i (ask|say|do)|how (can|should|do) i (help|support|approach|talk|discuss)|best (immediate |next )?step|draft\s+(a|an|the)?\s*(focused |parent |action )?plan|recovery plan|conversation starter|talk(ing)?\s+to\s+(my|the|his|her)\s+child|what\s+to\s+(say|ask|do)\s+tonight)\b/i.test(question);
+}
+
+// The frontend wraps the parent's actual question inside a larger context block
+// ("Status: ...", "Why: ...", "Parent question: ..."). Classification and regex-based
+// intent detection should only look at the real question, not the surrounding context.
+function extractParentQuestion(rawQuestion) {
+  const match = String(rawQuestion || '').match(/Parent question:\s*([\s\S]*)$/i);
+  return match ? match[1].trim() : rawQuestion;
+}
+
 function termSortKey(title) {
   const m = String(title).match(/(\d+)/);
   return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
@@ -463,12 +478,16 @@ if (report) {
   reportContext = `\n\nAdditional student report JSON:\n${JSON.stringify(report, null, 2)}\n\n`;
 }
 
-    // Use OpenAI to classify if this is a grade-related query
-    const isGradeQuery = await classifyQuestionIntent(userQuestion);
+    // Only classify/parse intent from the parent's actual question, not the surrounding context block.
+    const classificationQuestion = extractParentQuestion(userQuestion);
 
-    if (isGradeQuery) {
+    // Use OpenAI to classify if this is a grade-related query
+    const isGradeQuery = await classifyQuestionIntent(classificationQuestion);
+    const isAdvisory = isAdvisoryQuery(classificationQuestion);
+
+    if (isGradeQuery && !isAdvisory) {
       let effectiveCourseId = courseId;
-      const questionLower = userQuestion.toLowerCase();
+      const questionLower = classificationQuestion.toLowerCase();
       let matchedCourse = null;
       let courses = null;
 
@@ -485,13 +504,13 @@ if (report) {
         const { getStudentCourses } = await import('./supabaseClient.js');
         courses = await getStudentCourses(studentUserId);
 
-        const nlpResolvedCourseId = await resolveCourseFromQuestionNLP(userQuestion, courses);
+        const nlpResolvedCourseId = await resolveCourseFromQuestionNLP(classificationQuestion, courses);
         if (nlpResolvedCourseId != null) {
           matchedCourse = courses.find(c => Number(c.course_id) === Number(nlpResolvedCourseId)) || null;
         }
 
         if (!matchedCourse) {
-          matchedCourse = resolveCourseFromQuestion(userQuestion, courses);
+          matchedCourse = resolveCourseFromQuestion(classificationQuestion, courses);
         }
 
         // If user explicitly mentions a course in the question, that should win over any preselected courseId.
@@ -502,7 +521,7 @@ if (report) {
 
       const averageData = await getAverageGrade(studentUserId, effectiveCourseId);
 
-      const dateRange = extractDateRange(userQuestion);
+      const dateRange = extractDateRange(classificationQuestion);
       if (dateRange) {
         const allGrades = averageData.allGrades || [];
         const filteredGrades = allGrades.filter(g => {
@@ -556,7 +575,7 @@ if (report) {
         };
       }
 
-      if (isTrendQuery(userQuestion)) {
+      if (isTrendQuery(classificationQuestion)) {
         const courseLabel = matchedCourse
           ? getCourseLabelFromEnrollment(matchedCourse)
           : 'across all courses';
@@ -618,10 +637,10 @@ if (report) {
         const courseLabel = matchedCourse ? getCourseLabelFromEnrollment(matchedCourse) : null;
 
         // Lowest/highest is an exact min/max lookup: compute it in code, not the LLM.
-        const extremeMode = detectExtremeMode(userQuestion);
+        const extremeMode = detectExtremeMode(classificationQuestion);
         if (extremeMode) {
           // Course-level question, e.g. "which class has the lowest overall grade?"
-          if (detectExtremeScope(userQuestion) === 'course') {
+          if (detectExtremeScope(classificationQuestion) === 'course') {
             const courseExtreme = await computeExtremeCourse(averageData.allGrades, extremeMode);
 
             if (!courseExtreme) {
