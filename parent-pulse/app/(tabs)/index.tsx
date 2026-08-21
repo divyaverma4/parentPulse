@@ -38,6 +38,8 @@ type PriorityItem = {
 type SubjectItem = {
   id: string;
   subject: string;
+  averageGrade: number | null;
+  letterGrade: string;
   status: Status;
   signal: ContextSignal;
   why: string;
@@ -114,6 +116,23 @@ function iconForStatus(status: Status) {
   if (status === 'Action Recommended') return 'alert-circle';
   if (status === 'Needs Attention') return 'help-circle';
   return 'checkmark-circle';
+}
+
+function letterGradeFromAverage(avgGrade: number | null) {
+  if (avgGrade === null) return 'N/A';
+  if (avgGrade >= 97) return 'A+';
+  if (avgGrade >= 93) return 'A';
+  if (avgGrade >= 90) return 'A-';
+  if (avgGrade >= 87) return 'B+';
+  if (avgGrade >= 83) return 'B';
+  if (avgGrade >= 80) return 'B-';
+  if (avgGrade >= 77) return 'C+';
+  if (avgGrade >= 73) return 'C';
+  if (avgGrade >= 70) return 'C-';
+  if (avgGrade >= 67) return 'D+';
+  if (avgGrade >= 63) return 'D';
+  if (avgGrade >= 60) return 'D-';
+  return 'F';
 }
 
 function signalFromReport(reportSubject: any): ContextSignal {
@@ -358,6 +377,8 @@ function summarizeData(
     return {
       id: `s${index + 1}`,
       subject,
+      averageGrade: avgGrade,
+      letterGrade: letterGradeFromAverage(avgGrade),
       status,
       signal: bucket.signal,
       why,
@@ -615,6 +636,9 @@ export default function HomeScreen() {
                   </View>
                 </View>
                 <View style={styles.subjectRight}>
+                  <View style={[styles.gradeChip, { backgroundColor: style.chipBg }]}>
+                    <Text style={[styles.gradeChipText, { color: style.chipText }]}>{item.letterGrade}</Text>
+                  </View>
                   <View style={[styles.statusChip, { backgroundColor: style.chipBg }]}>
                     <Text style={[styles.statusChipText, { color: style.chipText }]}>{item.status}</Text>
                   </View>
@@ -847,9 +871,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   subjectRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  gradeChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  gradeChipText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   rowPressed: {
     opacity: 0.88,

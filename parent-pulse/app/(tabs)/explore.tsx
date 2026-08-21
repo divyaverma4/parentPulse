@@ -2,12 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
 	ActivityIndicator,
 	KeyboardAvoidingView,
+	NativeSyntheticEvent,
 	Platform,
 	SafeAreaView,
 	ScrollView,
 	StyleSheet,
 	Text,
 	TextInput,
+	TextInputSubmitEditingEventData,
 	TouchableOpacity,
 	View,
 } from 'react-native';
@@ -387,6 +389,11 @@ export default function ExploreChatScreen() {
 		setSending(false);
 	};
 
+	const onInputSubmit = (event?: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => {
+		event?.preventDefault?.();
+		void onSend(input);
+	};
+
 	return (
 		<SafeAreaView style={[styles.container, { backgroundColor: palette.screenBg }]}> 
 			<KeyboardAvoidingView
@@ -495,10 +502,13 @@ export default function ExploreChatScreen() {
 					<TextInput
 						value={input}
 						onChangeText={setInput}
+						onSubmitEditing={onInputSubmit}
 						placeholder="Ask about priorities, subjects, or next steps"
 						placeholderTextColor={isDark ? '#64748b' : '#94a3b8'}
 						style={[styles.input, { backgroundColor: palette.inputBg, borderColor: palette.border, color: palette.text }]}
-						multiline
+						multiline={false}
+						returnKeyType="send"
+						blurOnSubmit
 						editable={!sending}
 					/>
 					<TouchableOpacity style={[styles.sendButton, sending && styles.sendButtonDisabled]} onPress={() => onSend(input)}>
