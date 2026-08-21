@@ -32,6 +32,12 @@ type SubjectQuizTemplate = {
   questions: QuizQuestion[];
 };
 
+type QuizAnswer = {
+  question: QuizQuestion;
+  selectedIndex: number;
+  isCorrect: boolean;
+};
+
 type Status = 'Action Recommended' | 'Needs Attention' | 'On Track';
 
 type AverageApiResponse = {
@@ -85,18 +91,45 @@ function orderedUniqueSubjects(values: string[]) {
   });
 }
 
+const QUIZ_LENGTH = 5;
+
 function genericQuestionsFor(subject: string): QuizQuestion[] {
+  const slug = subject.toLowerCase().replace(/\s+/g, '-');
   return [
     {
-      id: `${subject.toLowerCase()}-g1`,
+      id: `${slug}-g1`,
       prompt: `${subject}: Which study strategy is most effective before a quiz?`,
       options: ['Re-read once quickly', 'Practice retrieval with questions', 'Skip notes', 'Only highlight text'],
       correctIndex: 1,
     },
     {
-      id: `${subject.toLowerCase()}-g2`,
+      id: `${slug}-g2`,
       prompt: `${subject}: What should you do after getting a question wrong?`,
       options: ['Ignore it', 'Guess again only', 'Review why the correct answer works', 'Move on immediately'],
+      correctIndex: 2,
+    },
+    {
+      id: `${slug}-g3`,
+      prompt: `${subject}: How far in advance should you start studying for a test?`,
+      options: ['The night before', 'Several days ahead', 'Never', 'During the test'],
+      correctIndex: 1,
+    },
+    {
+      id: `${slug}-g4`,
+      prompt: `${subject}: What is a good way to check your own understanding?`,
+      options: ['Explain it in your own words', 'Copy the textbook', 'Avoid questions', 'Memorize without meaning'],
+      correctIndex: 0,
+    },
+    {
+      id: `${slug}-g5`,
+      prompt: `${subject}: Which habit best supports long-term retention?`,
+      options: ['Cramming once', 'Spaced repetition over time', 'Studying only once', 'Skipping review'],
+      correctIndex: 1,
+    },
+    {
+      id: `${slug}-g6`,
+      prompt: `${subject}: When should you ask a teacher for help?`,
+      options: ['Never', 'Only after failing', 'As soon as you are confused', 'At the end of the year'],
       correctIndex: 2,
     },
   ];
@@ -117,6 +150,12 @@ const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
     questions: [
       { id: 'alg-1', prompt: 'If 3x + 5 = 20, what is x?', options: ['3', '4', '5', '6'], correctIndex: 2 },
       { id: 'alg-2', prompt: 'What is the slope of y = 2x - 7?', options: ['-7', '2', '7', '-2'], correctIndex: 1 },
+      { id: 'alg-3', prompt: 'What is the value of 4^2?', options: ['8', '12', '16', '20'], correctIndex: 2 },
+      { id: 'alg-4', prompt: 'Solve for x: x/3 = 9', options: ['3', '12', '27', '6'], correctIndex: 2 },
+      { id: 'alg-5', prompt: 'What is the greatest common factor of 12 and 18?', options: ['2', '3', '6', '9'], correctIndex: 2 },
+      { id: 'alg-6', prompt: 'Which of these is an equivalent fraction to 2/3?', options: ['4/9', '6/9', '3/4', '5/6'], correctIndex: 1 },
+      { id: 'alg-7', prompt: 'What is -5 + 8?', options: ['-13', '-3', '3', '13'], correctIndex: 2 },
+      { id: 'alg-8', prompt: 'What is the perimeter of a square with side length 6?', options: ['12', '18', '24', '36'], correctIndex: 2 },
     ],
   },
   {
@@ -139,6 +178,36 @@ const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
         options: ['To summarize every paragraph', 'To present the central claim of an essay', 'To list references', 'To add dialogue'],
         correctIndex: 1,
       },
+      {
+        id: 'eng-3',
+        prompt: 'Which word is a synonym for "happy"?',
+        options: ['Joyful', 'Furious', 'Tired', 'Confused'],
+        correctIndex: 0,
+      },
+      {
+        id: 'eng-4',
+        prompt: 'What type of word is "quickly"?',
+        options: ['Noun', 'Verb', 'Adverb', 'Pronoun'],
+        correctIndex: 2,
+      },
+      {
+        id: 'eng-5',
+        prompt: 'Which sentence uses correct punctuation?',
+        options: ['I like apples oranges, and pears.', 'I like apples, oranges, and pears.', 'I like apples oranges and pears', 'I like, apples, oranges and pears.'],
+        correctIndex: 1,
+      },
+      {
+        id: 'eng-6',
+        prompt: 'What is the plural form of "child"?',
+        options: ['Childs', 'Childes', 'Children', 'Child\'s'],
+        correctIndex: 2,
+      },
+      {
+        id: 'eng-7',
+        prompt: 'In a story, the "setting" refers to:',
+        options: ['The characters', 'The time and place', 'The theme', 'The conflict'],
+        correctIndex: 1,
+      },
     ],
   },
   {
@@ -146,6 +215,11 @@ const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
     questions: [
       { id: 'sci-1', prompt: 'What is the primary source of energy for Earth?', options: ['The Moon', 'The Sun', 'Wind', 'Ocean currents'], correctIndex: 1 },
       { id: 'sci-2', prompt: 'Which state of matter has a definite volume but no definite shape?', options: ['Solid', 'Liquid', 'Gas', 'Plasma'], correctIndex: 1 },
+      { id: 'sci-3', prompt: 'What gas do plants absorb during photosynthesis?', options: ['Oxygen', 'Nitrogen', 'Carbon dioxide', 'Hydrogen'], correctIndex: 2 },
+      { id: 'sci-4', prompt: 'Which organ pumps blood through the body?', options: ['Lungs', 'Heart', 'Liver', 'Kidney'], correctIndex: 1 },
+      { id: 'sci-5', prompt: 'What force pulls objects toward Earth?', options: ['Friction', 'Magnetism', 'Gravity', 'Tension'], correctIndex: 2 },
+      { id: 'sci-6', prompt: 'Which planet is closest to the Sun?', options: ['Venus', 'Mercury', 'Earth', 'Mars'], correctIndex: 1 },
+      { id: 'sci-7', prompt: 'What is the smallest unit of life?', options: ['Atom', 'Molecule', 'Cell', 'Tissue'], correctIndex: 2 },
     ],
   },
   {
@@ -158,6 +232,10 @@ const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
         options: ['A textbook summary', 'A modern documentary', 'A first-hand account from the time period', 'A historical fiction novel'],
         correctIndex: 2,
       },
+      { id: 'his-3', prompt: 'What is the capital of the United States?', options: ['New York City', 'Washington, D.C.', 'Philadelphia', 'Boston'], correctIndex: 1 },
+      { id: 'his-4', prompt: 'Which branch of government makes laws?', options: ['Executive', 'Judicial', 'Legislative', 'Military'], correctIndex: 2 },
+      { id: 'his-5', prompt: 'What continent is Egypt located on?', options: ['Asia', 'Africa', 'Europe', 'South America'], correctIndex: 1 },
+      { id: 'his-6', prompt: 'Who was the first President of the United States?', options: ['Thomas Jefferson', 'Abraham Lincoln', 'George Washington', 'John Adams'], correctIndex: 2 },
     ],
   },
   {
@@ -165,6 +243,10 @@ const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
     questions: [
       { id: 'spa-1', prompt: 'What does "biblioteca" mean in English?', options: ['Book', 'Library', 'Classroom', 'Notebook'], correctIndex: 1 },
       { id: 'spa-2', prompt: 'Choose the correct translation for "I am studying."', options: ['Estoy estudiando.', 'Soy estudiante.', 'Estoy cansado.', 'Tengo estudio.'], correctIndex: 0 },
+      { id: 'spa-3', prompt: 'What does "gracias" mean?', options: ['Please', 'Sorry', 'Thank you', 'Hello'], correctIndex: 2 },
+      { id: 'spa-4', prompt: 'Which word means "school" in Spanish?', options: ['Escuela', 'Casa', 'Tienda', 'Parque'], correctIndex: 0 },
+      { id: 'spa-5', prompt: 'How do you say "good morning" in Spanish?', options: ['Buenas noches', 'Buenos dias', 'Buenas tardes', 'Hasta luego'], correctIndex: 1 },
+      { id: 'spa-6', prompt: 'What does "amigo" mean in English?', options: ['Enemy', 'Teacher', 'Friend', 'Family'], correctIndex: 2 },
     ],
   },
   {
@@ -172,6 +254,10 @@ const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
     questions: [
       { id: 'pe-1', prompt: 'How many minutes should you exercise daily?', options: ['10', '20', '30', '60'], correctIndex: 2 },
       { id: 'pe-2', prompt: 'Which activity improves cardiovascular health?', options: ['Running', 'Reading', 'Painting', 'Sleeping'], correctIndex: 0 },
+      { id: 'pe-3', prompt: 'What should you do before intense exercise?', options: ['Eat a large meal', 'Warm up', 'Skip stretching', 'Sit down'], correctIndex: 1 },
+      { id: 'pe-4', prompt: 'Which of these is a team sport?', options: ['Basketball', 'Swimming laps alone', 'Solo jogging', 'Solo yoga'], correctIndex: 0 },
+      { id: 'pe-5', prompt: 'Why is stretching important?', options: ['It has no benefit', 'It increases flexibility and reduces injury', 'It tires you out', 'It slows your heart rate'], correctIndex: 1 },
+      { id: 'pe-6', prompt: 'What should you drink to stay hydrated during exercise?', options: ['Soda', 'Water', 'Coffee', 'Juice only'], correctIndex: 1 },
     ],
   },
   {
@@ -179,6 +265,9 @@ const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
     questions: [
       { id: 'rel-1', prompt: 'In class discussion, what does reflection usually help strengthen?', options: ['Memory and understanding', 'Only handwriting', 'Only speed', 'Only attendance'], correctIndex: 0 },
       { id: 'rel-2', prompt: 'What is the best first step when reviewing a religion study guide?', options: ['Skip definitions', 'Review key concepts and vocabulary', 'Memorize one sentence only', 'Ignore class notes'], correctIndex: 1 },
+      { id: 'rel-3', prompt: 'Why are class discussions valuable in religion class?', options: ['They waste time', 'They build understanding through different perspectives', 'They replace studying', 'They are optional'], correctIndex: 1 },
+      { id: 'rel-4', prompt: 'What is a good way to remember key vocabulary terms?', options: ['Flashcards and repetition', 'Reading once', 'Ignoring definitions', 'Guessing on tests'], correctIndex: 0 },
+      { id: 'rel-5', prompt: 'What should you do if you do not understand a concept in class?', options: ['Stay silent', 'Ask a question', 'Skip the assignment', 'Guess randomly'], correctIndex: 1 },
     ],
   },
   {
@@ -186,6 +275,10 @@ const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
     questions: [
       { id: 'art-1', prompt: 'Who painted the Mona Lisa?', options: ['Vincent van Gogh', 'Pablo Picasso', 'Leonardo da Vinci', 'Claude Monet'], correctIndex: 2 },
       { id: 'art-2', prompt: 'What is the primary medium used in watercolor painting?', options: ['Oil paints', 'Acrylic paints', 'Water-based paints', 'Charcoal'], correctIndex: 2 },
+      { id: 'art-3', prompt: 'Which colors are considered primary colors?', options: ['Red, blue, yellow', 'Green, orange, purple', 'Black, white, gray', 'Pink, teal, brown'], correctIndex: 0 },
+      { id: 'art-4', prompt: 'What art technique uses light and dark contrast?', options: ['Chiaroscuro', 'Collage', 'Pointillism', 'Sculpting'], correctIndex: 0 },
+      { id: 'art-5', prompt: 'What is a "still life" in art?', options: ['A moving scene', 'An artwork of inanimate objects', 'A self-portrait', 'A landscape only'], correctIndex: 1 },
+      { id: 'art-6', prompt: 'Which tool is commonly used for sketching?', options: ['Pencil', 'Hammer', 'Scissors', 'Ruler only'], correctIndex: 0 },
     ],
   },
 ];
@@ -202,6 +295,12 @@ export default function TestPrepScreen() {
   const [feedbackTitle, setFeedbackTitle] = useState('');
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [autoOpenedRouteSubject, setAutoOpenedRouteSubject] = useState<string | null>(null);
+  const [score, setScore] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
+  const [quizComplete, setQuizComplete] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState('');
+  const [aiFeedbackLoading, setAiFeedbackLoading] = useState(false);
+  const [aiFeedbackError, setAiFeedbackError] = useState('');
 
   const expoExtra = (Constants.expoConfig?.extra as any) || {};
   const provided = expoExtra.apiBaseUrl;
@@ -217,6 +316,8 @@ export default function TestPrepScreen() {
       border: isDark ? '#334155' : '#e2e8f0',
       accent: isDark ? '#38bdf8' : '#0ea5e9',
       optionBg: isDark ? '#1f2937' : '#f1f5f9',
+      success: isDark ? '#22c55e' : '#16a34a',
+      danger: isDark ? '#f87171' : '#dc2626',
     }),
     [isDark]
   );
@@ -362,17 +463,41 @@ export default function TestPrepScreen() {
   }, [autoOpenedRouteSubject, loadingSubjects, requestedSubject, subjectQuizzes]);
 
   function openSubject(subjectQuiz: SubjectQuiz) {
+    const pool = shuffleQuestions(subjectQuiz.questions);
     setSelectedSubject({
       ...subjectQuiz,
-      questions: shuffleQuestions(subjectQuiz.questions),
+      questions: pool.slice(0, Math.min(QUIZ_LENGTH, pool.length)),
     });
     setQuestionIndex(0);
+    setScore(0);
+    setQuizAnswers([]);
+    setQuizComplete(false);
+    setAiFeedback('');
+    setAiFeedbackError('');
+  }
+
+  function retakeQuiz() {
+    if (selectedSubject) {
+      const original = subjectQuizzes.find((q) => q.subject === selectedSubject.subject);
+      if (original) openSubject(original);
+    }
+  }
+
+  function exitQuiz() {
+    setSelectedSubject(null);
+    setQuestionIndex(0);
+    setFeedbackVisible(false);
+    setQuizComplete(false);
+    setAiFeedback('');
+    setAiFeedbackError('');
   }
 
   function handleAnswerSelect(selectedIndex: number) {
     if (!currentQuestion || !selectedSubject) return;
 
     const isCorrect = selectedIndex === currentQuestion.correctIndex;
+    setScore((prev) => (isCorrect ? prev + 1 : prev));
+    setQuizAnswers((prev) => [...prev, { question: currentQuestion, selectedIndex, isCorrect }]);
     setFeedbackTitle(isCorrect ? 'Correct' : 'Incorrect');
     setFeedbackMessage(
       isCorrect
@@ -383,10 +508,52 @@ export default function TestPrepScreen() {
   }
 
   function handleFeedbackContinue() {
+    setFeedbackVisible(false);
+
     if (selectedSubject && questionIndex < selectedSubject.questions.length - 1) {
       setQuestionIndex((prev) => prev + 1);
+      return;
     }
-    setFeedbackVisible(false);
+
+    setQuizComplete(true);
+    requestAiFeedback();
+  }
+
+  async function requestAiFeedback() {
+    if (!selectedSubject) return;
+
+    setAiFeedbackLoading(true);
+    setAiFeedbackError('');
+
+    const missed = quizAnswers.filter((a) => !a.isCorrect);
+    const summaryLines = quizAnswers
+      .map((a, idx) => {
+        const yourAnswer = a.question.options[a.selectedIndex];
+        const correctAnswer = a.question.options[a.question.correctIndex];
+        return `${idx + 1}. ${a.question.prompt}\nStudent answered: ${yourAnswer} (${a.isCorrect ? 'correct' : 'incorrect, correct answer: ' + correctAnswer})`;
+      })
+      .join('\n');
+
+    const question = `A student just finished a ${selectedSubject.subject} practice quiz and scored ${score}/${quizAnswers.length}. Here are the results:\n${summaryLines}\n\nBased on the questions missed (${missed.length}), give 2-3 short, encouraging, actionable tips for how the student can improve in ${selectedSubject.subject}.`;
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/chat/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, studentUserId: STUDENT_ID }),
+      });
+
+      if (!response.ok) throw new Error('Request failed');
+
+      const payload = await response.json();
+      const text = payload?.response || payload?.answer || payload?.message || '';
+      if (!text) throw new Error('No feedback returned');
+      setAiFeedback(text);
+    } catch {
+      setAiFeedbackError('Could not load personalized feedback right now.');
+    } finally {
+      setAiFeedbackLoading(false);
+    }
   }
 
   return (
@@ -422,7 +589,7 @@ export default function TestPrepScreen() {
                   <View>
                     <Text style={[styles.subjectTitle, { color: colors.text }]}>{item.subject}</Text>
                     <Text style={[styles.subjectMeta, { color: colors.subtleText }]}>
-                      {item.questions.length} sample questions
+                      {Math.min(QUIZ_LENGTH, item.questions.length)}-question shuffled quiz
                     </Text>
                   </View>
                   <View
@@ -449,6 +616,78 @@ export default function TestPrepScreen() {
                 </View>
               </Pressable>
             ))}
+          </View>
+        ) : quizComplete ? (
+          <View style={[styles.quizCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.quizSubject, { color: colors.accent }]}>{selectedSubject.subject} Results</Text>
+            <Text style={[styles.scoreText, { color: colors.text }]}>
+              {score}/{selectedSubject.questions.length}
+            </Text>
+            <Text style={[styles.scoreSubtext, { color: colors.subtleText }]}>
+              {score === selectedSubject.questions.length
+                ? 'Perfect score! Great job.'
+                : 'Keep practicing to improve your score.'}
+            </Text>
+
+            <View style={styles.resultsList}>
+              {quizAnswers.map((answer, idx) => (
+                <View
+                  key={answer.question.id}
+                  style={[
+                    styles.resultItem,
+                    { borderColor: colors.border, backgroundColor: colors.optionBg },
+                  ]}
+                >
+                  <Text style={[styles.resultPrompt, { color: colors.text }]}>
+                    {idx + 1}. {answer.question.prompt}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.resultAnswer,
+                      { color: answer.isCorrect ? colors.success : colors.danger },
+                    ]}
+                  >
+                    {answer.isCorrect ? 'Correct' : 'Incorrect'} — your answer: {answer.question.options[answer.selectedIndex]}
+                  </Text>
+                  {!answer.isCorrect ? (
+                    <Text style={[styles.resultReasoning, { color: colors.subtleText }]}>
+                      Correct answer: {answer.question.options[answer.question.correctIndex]}
+                    </Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+
+            <View
+              style={[
+                styles.aiFeedbackCard,
+                { borderColor: colors.border, backgroundColor: colors.optionBg },
+              ]}
+            >
+              <Text style={[styles.aiFeedbackTitle, { color: colors.text }]}>How to improve</Text>
+              {aiFeedbackLoading ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : aiFeedbackError ? (
+                <Text style={[styles.resultReasoning, { color: colors.subtleText }]}>{aiFeedbackError}</Text>
+              ) : (
+                <Text style={[styles.aiFeedbackText, { color: colors.subtleText }]}>{aiFeedback}</Text>
+              )}
+            </View>
+
+            <View style={styles.summaryButtonRow}>
+              <Pressable
+                style={[styles.retakeButton, { backgroundColor: colors.accent }]}
+                onPress={retakeQuiz}
+              >
+                <Text style={styles.modalButtonText}>Retake Quiz</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.backButton, { borderColor: colors.border }]}
+                onPress={exitQuiz}
+              >
+                <Text style={[styles.backButtonText, { color: colors.subtleText }]}>Back to Subjects</Text>
+              </Pressable>
+            </View>
           </View>
         ) : (
           <View style={[styles.quizCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -477,9 +716,12 @@ export default function TestPrepScreen() {
                   </Text>
                 </View>
               </View>
-              <Text style={[styles.quizProgress, { color: colors.subtleText }]}>
-                {questionIndex + 1}/{selectedSubject.questions.length}
-              </Text>
+              <View style={styles.progressWrap}>
+                <Text style={[styles.quizProgress, { color: colors.subtleText }]}>
+                  Question {questionIndex + 1}/{selectedSubject.questions.length}
+                </Text>
+                <Text style={[styles.quizScoreLabel, { color: colors.subtleText }]}>Score: {score}</Text>
+              </View>
             </View>
 
             <Text style={[styles.questionText, { color: colors.text }]}>{currentQuestion?.prompt}</Text>
@@ -499,10 +741,10 @@ export default function TestPrepScreen() {
 
             <Pressable
               style={[styles.backButton, { borderColor: colors.border }]}
-              onPress={() => setSelectedSubject(null)}
+              onPress={exitQuiz}
             >
               <Text style={[styles.backButtonText, { color: colors.subtleText }]}>
-                Back to Subjects
+                Exit Quiz
               </Text>
             </Pressable>
           </View>
@@ -527,10 +769,11 @@ export default function TestPrepScreen() {
               <Text style={styles.modalButtonText}>
                 {selectedSubject && questionIndex < selectedSubject.questions.length - 1
                   ? 'Next Question'
-                  : 'Done'}
+                  : 'See Results'}
               </Text>
             </Pressable>
           </View>
+
         </View>
       </Modal>
     </SafeAreaView>
@@ -646,9 +889,75 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+  progressWrap: {
+    alignItems: 'flex-end',
+  },
   quizProgress: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  quizScoreLabel: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  scoreText: {
+    marginTop: 10,
+    fontSize: 40,
+    fontWeight: '800',
+  },
+  scoreSubtext: {
+    marginTop: 4,
+    marginBottom: 16,
+    fontSize: 14,
+  },
+  resultsList: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  resultItem: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+  },
+  resultPrompt: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  resultAnswer: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  resultReasoning: {
+    marginTop: 4,
+    fontSize: 13,
+  },
+  aiFeedbackCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 18,
+  },
+  aiFeedbackTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  aiFeedbackText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  summaryButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  retakeButton: {
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    alignItems: 'center',
   },
   questionText: {
     fontSize: 23,
