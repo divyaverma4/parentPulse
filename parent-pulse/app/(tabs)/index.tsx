@@ -123,7 +123,16 @@ function letterGradeFromAverage(avgGrade: number | null) {
   if (avgGrade >= 97) return 'A+';
   if (avgGrade >= 93) return 'A';
   if (avgGrade >= 90) return 'A-';
-  return 'Below A-';
+  if (avgGrade >= 87) return 'B+';
+  if (avgGrade >= 83) return 'B';
+  if (avgGrade >= 80) return 'B-';
+  if (avgGrade >= 77) return 'C+';
+  if (avgGrade >= 73) return 'C';
+  if (avgGrade >= 70) return 'C-';
+  if (avgGrade >= 67) return 'D+';
+  if (avgGrade >= 63) return 'D';
+  if (avgGrade >= 60) return 'D-';
+  return 'F';
 }
 
 function signalFromReport(reportSubject: any): ContextSignal {
@@ -627,8 +636,8 @@ export default function HomeScreen() {
                   </View>
                 </View>
                 <View style={styles.subjectRight}>
-                  <View style={[styles.gradeChip, item.letterGrade === 'Below A-' && styles.gradeChipRisk]}>
-                    <Text style={styles.gradeChipText}>{item.letterGrade}</Text>
+                  <View style={[styles.gradeChip, { backgroundColor: style.chipBg }]}>
+                    <Text style={[styles.gradeChipText, { color: style.chipText }]}>{item.letterGrade}</Text>
                   </View>
                   <View style={[styles.statusChip, { backgroundColor: style.chipBg }]}>
                     <Text style={[styles.statusChipText, { color: style.chipText }]}>{item.status}</Text>
@@ -866,16 +875,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   gradeChip: {
-    backgroundColor: '#dbeafe',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  gradeChipRisk: {
-    backgroundColor: '#fee2e2',
-  },
   gradeChipText: {
-    color: '#1e3a8a',
     fontSize: 12,
     fontWeight: '800',
   },
