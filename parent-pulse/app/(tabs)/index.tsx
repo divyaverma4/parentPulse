@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -635,7 +636,9 @@ export default function HomeScreen() {
                   <View style={[styles.subjectDot, { backgroundColor: subjectColor }]} />
                   <View style={styles.subjectTitleRow}>
                     <Text style={[styles.subjectText, { color: palette.text }]}>{item.subject}</Text>
-                    <View
+                    <Pressable
+                      onPress={() => openSubjectChat(item)}
+                      hitSlop={8}
                       style={[
                         styles.aiBadge,
                         {
@@ -644,8 +647,12 @@ export default function HomeScreen() {
                         },
                       ]}
                     >
-                      <Text style={[styles.aiBadgeText, { color: palette.aiBadgeText }]}>AI</Text>
-                    </View>
+                      <Image
+                        source={require('../../assets/images/AI.png')}
+                        style={styles.aiImage}
+                        resizeMode="contain"
+                      />
+                    </Pressable>
                     <Ionicons name="chevron-forward" size={14} color={palette.subText} style={styles.subjectArrow} />
                   </View>
                 </View>
@@ -872,21 +879,21 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   aiBadge: {
-    minWidth: 52,
-    height: 30,
-    borderRadius: 10,
-    borderWidth: 0,
+    width: 32,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
     backgroundColor: '#000000',
+    overflow: 'hidden',
+    marginLeft: 2,
+    marginRight: 2,
   },
-  aiBadgeText: {
-    fontSize: 17,
-    fontWeight: '900',
-    letterSpacing: -1.2,
-    lineHeight: 17,
-    color: '#ffffff',
+  aiImage: {
+    width: 30,
+    height: 18
   },
   subjectArrow: {
     marginTop: 1,
