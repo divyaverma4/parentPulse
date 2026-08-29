@@ -518,10 +518,9 @@ export default function HomeScreen() {
       errorBorder: isDark ? '#7f1d1d' : '#fecaca',
       errorText: isDark ? '#fecaca' : '#991b1b',
       avatarBg: isDark ? '#2563eb' : '#1d4ed8',
-      aiBadgeBg: isDark ? '#1d4ed8' : '#dbeafe',
-      aiBadgeBorder: isDark ? '#60a5fa' : '#93c5fd',
-      aiBadgeText: isDark ? '#eff6ff' : '#1d4ed8',
-      aiBadgeIcon: isDark ? '#eff6ff' : '#1d4ed8',
+      aiBadgeBg: isDark ? '#05070d' : '#111827',
+      aiBadgeBorder: isDark ? '#0f172a' : '#1f2937',
+      aiBadgeText: '#f8fafc',
     }),
     [isDark]
   );
@@ -645,7 +644,7 @@ export default function HomeScreen() {
                         },
                       ]}
                     >
-                      <Ionicons name="sparkles" size={11} color={palette.aiBadgeIcon} />
+                      <Text style={[styles.aiBadgeText, { color: palette.aiBadgeText }]}>AI</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={14} color={palette.subText} style={styles.subjectArrow} />
                   </View>
@@ -873,17 +872,24 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   aiBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    minWidth: 34,
+    height: 24,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 6,
     shadowColor: '#0f172a',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
+  },
+  aiBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+    lineHeight: 11,
   },
   subjectArrow: {
     marginTop: 1,
