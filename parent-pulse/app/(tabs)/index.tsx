@@ -518,6 +518,10 @@ export default function HomeScreen() {
       errorBorder: isDark ? '#7f1d1d' : '#fecaca',
       errorText: isDark ? '#fecaca' : '#991b1b',
       avatarBg: isDark ? '#2563eb' : '#1d4ed8',
+      aiBadgeBg: isDark ? '#1d4ed8' : '#dbeafe',
+      aiBadgeBorder: isDark ? '#60a5fa' : '#93c5fd',
+      aiBadgeText: isDark ? '#eff6ff' : '#1d4ed8',
+      aiBadgeIcon: isDark ? '#eff6ff' : '#1d4ed8',
     }),
     [isDark]
   );
@@ -632,6 +636,17 @@ export default function HomeScreen() {
                   <View style={[styles.subjectDot, { backgroundColor: subjectColor }]} />
                   <View style={styles.subjectTitleRow}>
                     <Text style={[styles.subjectText, { color: palette.text }]}>{item.subject}</Text>
+                    <View
+                      style={[
+                        styles.aiBadge,
+                        {
+                          backgroundColor: palette.aiBadgeBg,
+                          borderColor: palette.aiBadgeBorder,
+                        },
+                      ]}
+                    >
+                      <Ionicons name="sparkles" size={11} color={palette.aiBadgeIcon} />
+                    </View>
                     <Ionicons name="chevron-forward" size={14} color={palette.subText} style={styles.subjectArrow} />
                   </View>
                 </View>
@@ -855,7 +870,20 @@ const styles = StyleSheet.create({
   subjectTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+  },
+  aiBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
   subjectArrow: {
     marginTop: 1,

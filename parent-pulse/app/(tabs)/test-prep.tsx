@@ -8,6 +8,7 @@ import {
   Text,
   View,
   ScrollView,
+  type TextProps,
 } from 'react-native';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
@@ -91,6 +92,86 @@ function orderedUniqueSubjects(values: string[]) {
   });
 }
 
+const SUPERSCRIPT_MAP: Record<string, string> = {
+  '0': '⁰',
+  '1': '¹',
+  '2': '²',
+  '3': '³',
+  '4': '⁴',
+  '5': '⁵',
+  '6': '⁶',
+  '7': '⁷',
+  '8': '⁸',
+  '9': '⁹',
+};
+
+const SUBSCRIPT_MAP: Record<string, string> = {
+  '0': '₀',
+  '1': '₁',
+  '2': '₂',
+  '3': '₃',
+  '4': '₄',
+  '5': '₅',
+  '6': '₆',
+  '7': '₇',
+  '8': '₈',
+  '9': '₉',
+};
+
+function formatLatexText(raw: string): string {
+  let text = String(raw ?? '');
+
+  text = text
+    .replace(/\\displaystyle\s*/g, '')
+    .replace(/\\text\s*\{([^}]+)\}/g, '$1')
+    .replace(/\\left\(/g, '(')
+    .replace(/\\right\)/g, ')')
+    .replace(/\\left\[/g, '[')
+    .replace(/\\right\]/g, ']')
+    .replace(/\\left\\\{/g, '{')
+    .replace(/\\right\\\}/g, '}')
+    .replace(/\\left\|/g, '|')
+    .replace(/\\right\|/g, '|')
+    .replace(/\\cdot/g, '·')
+    .replace(/\\times/g, '×')
+    .replace(/\\div/g, '÷')
+    .replace(/\\pm/g, '±')
+    .replace(/\\neq/g, '≠')
+    .replace(/\\approx/g, '≈')
+    .replace(/\\geq/g, '≥')
+    .replace(/\\leq/g, '≤')
+    .replace(/\\infty/g, '∞')
+    .replace(/\\pi/g, 'π')
+    .replace(/\\theta/g, 'θ')
+    .replace(/\\alpha/g, 'α')
+    .replace(/\\beta/g, 'β')
+    .replace(/\\gamma/g, 'γ')
+    .replace(/\\lambda/g, 'λ')
+    .replace(/\\sigma/g, 'σ')
+    .replace(/\\sqrt\{([^{}]+)\}/g, '√($1)')
+    .replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '($1)/($2)')
+    .replace(/\\\^/g, '^')
+    .replace(/\\_/g, '_')
+    .replace(/\\ /g, ' ')
+    .replace(/\\,/g, ' ')
+    .replace(/\\\{/g, '{')
+    .replace(/\\\}/g, '}');
+
+  text = text.replace(/\^([0-9])/g, (_, exponent: string) => SUPERSCRIPT_MAP[exponent] ?? exponent);
+  text = text.replace(/_([0-9A-Za-z])/g, (_, subscript: string) => SUBSCRIPT_MAP[subscript] ?? subscript);
+
+  return text.replace(/\{\{/g, '{').replace(/\}\}/g, '}').replace(/\s+/g, ' ').trim();
+}
+
+function LatexText({ children, style, ...props }: TextProps & { children?: React.ReactNode }) {
+  const text = typeof children === 'string' ? formatLatexText(children) : children;
+  return (
+    <Text style={style} {...props}>
+      {text}
+    </Text>
+  );
+}
+
 const QUIZ_LENGTH = 5;
 
 function genericQuestionsFor(subject: string): QuizQuestion[] {
@@ -148,14 +229,48 @@ const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
   {
     subject: 'Pre-Algebra',
     questions: [
-      { id: 'alg-1', prompt: 'If 3x + 5 = 20, what is x?', options: ['3', '4', '5', '6'], correctIndex: 2 },
-      { id: 'alg-2', prompt: 'What is the slope of y = 2x - 7?', options: ['-7', '2', '7', '-2'], correctIndex: 1 },
-      { id: 'alg-3', prompt: 'What is the value of 4^2?', options: ['8', '12', '16', '20'], correctIndex: 2 },
-      { id: 'alg-4', prompt: 'Solve for x: x/3 = 9', options: ['3', '12', '27', '6'], correctIndex: 2 },
-      { id: 'alg-5', prompt: 'What is the greatest common factor of 12 and 18?', options: ['2', '3', '6', '9'], correctIndex: 2 },
-      { id: 'alg-6', prompt: 'Which of these is an equivalent fraction to 2/3?', options: ['4/9', '6/9', '3/4', '5/6'], correctIndex: 1 },
-      { id: 'alg-7', prompt: 'What is -5 + 8?', options: ['-13', '-3', '3', '13'], correctIndex: 2 },
-      { id: 'alg-8', prompt: 'What is the perimeter of a square with side length 6?', options: ['12', '18', '24', '36'], correctIndex: 2 },
+      {
+        id: 'alg-1',
+        prompt: 'Solve for x: \\frac{2x + 5}{3} = 7',
+        options: ['6', '7', '8', '9'],
+        correctIndex: 2,
+      },
+      {
+        id: 'alg-2',
+        prompt: 'Simplify: \\frac{x^2 - 9}{x - 3}',
+        options: ['x - 3', 'x + 3', 'x^2 + 3', '9x - 3'],
+        correctIndex: 1,
+      },
+      {
+        id: 'alg-3',
+        prompt: 'If f(x) = 2x^2 - 5x + 3, what is f(3)?',
+        options: ['0', '3', '6', '9'],
+        correctIndex: 2,
+      },
+      {
+        id: 'alg-4',
+        prompt: 'Solve for x: \\sqrt{x + 7} = 5',
+        options: ['15', '18', '20', '25'],
+        correctIndex: 1,
+      },
+      {
+        id: 'alg-5',
+        prompt: 'Find the slope of the line through (2, 5) and (6, 13).',
+        options: ['1', '2', '3', '4'],
+        correctIndex: 1,
+      },
+      {
+        id: 'alg-6',
+        prompt: 'Which equation is equivalent to \\left(x + 2\\right)^2 = 25?',
+        options: ['x^2 + 4x - 21 = 0', 'x^2 + 4x + 21 = 0', 'x^2 + 2x - 21 = 0', 'x^2 + 2x + 21 = 0'],
+        correctIndex: 0,
+      },
+      {
+        id: 'alg-7',
+        prompt: 'Solve for x: 3(x - 2) = 5x + 8',
+        options: ['x = -7', 'x = -2', 'x = 2', 'x = 7'],
+        correctIndex: 0,
+      },
     ],
   },
   {
@@ -564,7 +679,7 @@ export default function TestPrepScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.heading, { color: colors.text }]}>Test Prep</Text>
-        <Text style={[styles.subheading, { color: colors.subtleText }]}>Practice quick quizzes by subject.</Text>
+        <Text style={[styles.subheading, { color: colors.subtleText }]}>Practice for upcoming quizzes and exams.</Text>
 
         {loadingSubjects ? (
           <View style={styles.stateWrap}>
@@ -638,21 +753,21 @@ export default function TestPrepScreen() {
                     { borderColor: colors.border, backgroundColor: colors.optionBg },
                   ]}
                 >
-                  <Text style={[styles.resultPrompt, { color: colors.text }]}>
-                    {idx + 1}. {answer.question.prompt}
-                  </Text>
-                  <Text
+                  <LatexText style={[styles.resultPrompt, { color: colors.text }]}>
+                    {`${idx + 1}. ${answer.question.prompt}`}
+                  </LatexText>
+                  <LatexText
                     style={[
                       styles.resultAnswer,
                       { color: answer.isCorrect ? colors.success : colors.danger },
                     ]}
                   >
-                    {answer.isCorrect ? 'Correct' : 'Incorrect'} — your answer: {answer.question.options[answer.selectedIndex]}
-                  </Text>
+                    {`${answer.isCorrect ? 'Correct' : 'Incorrect'} — your answer: ${answer.question.options[answer.selectedIndex]}`}
+                  </LatexText>
                   {!answer.isCorrect ? (
-                    <Text style={[styles.resultReasoning, { color: colors.subtleText }]}>
-                      Correct answer: {answer.question.options[answer.question.correctIndex]}
-                    </Text>
+                    <LatexText style={[styles.resultReasoning, { color: colors.subtleText }]}>
+                      {`Correct answer: ${answer.question.options[answer.question.correctIndex]}`}
+                    </LatexText>
                   ) : null}
                 </View>
               ))}
@@ -724,7 +839,9 @@ export default function TestPrepScreen() {
               </View>
             </View>
 
-            <Text style={[styles.questionText, { color: colors.text }]}>{currentQuestion?.prompt}</Text>
+            <LatexText style={[styles.questionText, { color: colors.text }]}>
+              {currentQuestion?.prompt ?? ''}
+            </LatexText>
 
             <View style={styles.optionsWrap}>
               {currentQuestion?.options.map((option, index) => (
@@ -734,7 +851,7 @@ export default function TestPrepScreen() {
                   onPress={() => handleAnswerSelect(index)}
                   style={[styles.optionButton, { backgroundColor: colors.optionBg, borderColor: colors.border }]}
                 >
-                  <Text style={[styles.optionText, { color: colors.text }]}>{option}</Text>
+                  <LatexText style={[styles.optionText, { color: colors.text }]}>{option}</LatexText>
                 </Pressable>
               ))}
             </View>
@@ -744,7 +861,7 @@ export default function TestPrepScreen() {
               onPress={exitQuiz}
             >
               <Text style={[styles.backButtonText, { color: colors.subtleText }]}>
-                Exit Quiz
+                Return to Subject View
               </Text>
             </Pressable>
           </View>
@@ -760,7 +877,7 @@ export default function TestPrepScreen() {
         <View style={styles.modalBackdrop}>
           <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>{feedbackTitle}</Text>
-            <Text style={[styles.modalMessage, { color: colors.subtleText }]}>{feedbackMessage}</Text>
+            <LatexText style={[styles.modalMessage, { color: colors.subtleText }]}>{feedbackMessage}</LatexText>
 
             <Pressable
               style={[styles.modalButton, { backgroundColor: colors.accent }]}
