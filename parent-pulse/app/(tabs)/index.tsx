@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useAppTheme } from '@/contexts/app-theme-context';
 
@@ -497,11 +498,18 @@ export default function HomeScreen() {
   }, [subjects]);
 
   const openSubjectChat = (item: SubjectItem) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({ pathname: '/(tabs)/explore', params: buildSubjectChatParams(item) as any });
   };
 
   const openPriorityChat = (item: PriorityItem) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({ pathname: '/(tabs)/explore', params: buildPriorityChatParams(item) as any });
+  };
+
+  const toggleThemeWithHaptics = () => {
+    void Haptics.selectionAsync();
+    toggleTheme();
   };
 
   const palette = useMemo(
@@ -537,7 +545,7 @@ export default function HomeScreen() {
           <View style={styles.headerRight}>
             <TouchableOpacity
               style={[styles.themeToggleButton, { backgroundColor: isDark ? '#334155' : '#e2e8f0' }]}
-              onPress={toggleTheme}
+              onPress={toggleThemeWithHaptics}
               activeOpacity={0.85}
             >
               <Text style={[styles.themeToggleText, { color: isDark ? '#e2e8f0' : '#334155' }]}>

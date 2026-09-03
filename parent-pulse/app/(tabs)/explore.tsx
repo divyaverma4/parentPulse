@@ -451,7 +451,7 @@ export default function ExploreChatScreen() {
 										} as never)
 									}
 								>
-									<Text style={[styles.testPrepChipText, { color: palette.chipText }]}>Test Prep</Text>
+									<Text style={[styles.testPrepChipText, { color: palette.chipText }]}>Exam/Quiz Prep</Text>
 								</TouchableOpacity>
 							)}
 						</View>
