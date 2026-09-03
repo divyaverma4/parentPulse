@@ -678,7 +678,7 @@ export default function TestPrepScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.heading, { color: colors.text }]}>Test Prep</Text>
+        <Text style={[styles.heading, { color: colors.text }]}>Exam/Quiz Prep</Text>
         <Text style={[styles.subheading, { color: colors.subtleText }]}>Practice for upcoming quizzes and exams.</Text>
 
         {loadingSubjects ? (
