@@ -11,9 +11,44 @@ function fakeId(prefix) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function fakeRowFor(table) {
+  const idFieldMap = {
+    accounts: "account_id",
+    users: "user_id",
+    courses: "course_id",
+    enrollments: "enrollment_id",
+    grading_periods: "grading_period_id",
+    assignment_groups: "assignment_group_id",
+    assignments: "assignment_id",
+    submissions: "submission_id"
+  };
+
+  const row = { id: fakeId(table) };
+  const key = idFieldMap[table] || "id";
+  row[key] = fakeId(key);
+  return row;
+}
+
+function isGradeExport(raw) {
+  return !!(
+    raw &&
+    typeof raw === "object" &&
+    typeof raw.student === "string" &&
+    raw.student.trim() &&
+    raw.classes &&
+    typeof raw.classes === "object"
+  );
+}
+
 async function insertRow(table, payload) {
+  if (!supabase) {
+    const fake = fakeRowFor(table);
+    console.warn(`⚠ Supabase is not configured; skipping insert for ${table}.`);
+    return fake;
+  }
+
   if (DRY_RUN) {
-    const fake = { id: fakeId(table) };
+    const fake = fakeRowFor(table);
     console.log(`[DRY RUN] → ${table}`, payload, "→", fake.id);
     return fake;
   }
@@ -40,6 +75,13 @@ function mapStatus(status) {
   };
 }
 
+function pickId(row, keys) {
+  for (const key of keys) {
+    if (row && row[key] != null && row[key] !== "") return row[key];
+  }
+  return row?.id ?? null;
+}
+
 async function importGrades() {
   console.log("⏳ Waiting for schema to be ready...");
   await initSchema();   // <-- ensures tables exist BEFORE inserts
@@ -52,46 +94,55 @@ async function importGrades() {
     console.log(`\n📄 Importing ${file}`);
 
     const raw = JSON.parse(fs.readFileSync(path.join(JSON_DIR, file), "utf8"));
-    const studentName = raw.student;
+    if (!isGradeExport(raw)) {
+      console.warn(`⚠ Skipping ${file}: not a grade export JSON file.`);
+      continue;
+    }
+
+    const studentName = raw.student.trim();
 
     // 1. ACCOUNT
     const accountRow = await insertRow("accounts", {
       name: `${studentName}-account`
     });
+    const accountId = pickId(accountRow, ["account_id", "id"]);
 
     // 2. USER
     const userRow = await insertRow("users", {
-      account_id: accountRow.id,
+      account_id: accountId,
       full_name: studentName,
       email: `${studentName.toLowerCase()}@school.edu`,
       user_type: "student"
     });
+    const userId = pickId(userRow, ["user_id", "id"]);
 
     // 3. CLASSES → COURSES
     for (const [className, classData] of Object.entries(raw.classes)) {
       const courseRow = await insertRow("courses", {
-        account_id: accountRow.id,
+        account_id: accountId,
         course_code: className,
         name: className
       });
+      const courseId = pickId(courseRow, ["course_id", "id"]);
 
       // 4. ENROLLMENT
       await insertRow("enrollments", {
-        user_id: userRow.id,
-        course_id: courseRow.id,
+        user_id: userId,
+        course_id: courseId,
         role: "student"
       });
 
       // 5. TERMS → GRADING PERIODS
       for (const [termLabel, termData] of Object.entries(classData.terms)) {
         const gradingPeriodRow = await insertRow("grading_periods", {
-          course_id: courseRow.id,
+          course_id: courseId,
           title: termLabel,
           start_date: "2024-01-01",
           end_date: "2024-12-31",
           term_grade: termData.termGrade ?? null,
           letter_grade: termData.letterGrade ?? null
         });
+        const gradingPeriodId = pickId(gradingPeriodRow, ["grading_period_id", "id"]);
 
         // 6. ASSIGNMENTS
         for (const a of termData.assignments) {
@@ -99,26 +150,27 @@ async function importGrades() {
           let groupId = null;
           if (a.category) {
             const groupRow = await insertRow("assignment_groups", {
-              course_id: courseRow.id,
+              course_id: courseId,
               name: a.category
             });
-            groupId = groupRow.id;
+            groupId = pickId(groupRow, ["assignment_group_id", "id"]);
           }
 
           const assignmentRow = await insertRow("assignments", {
-            course_id: courseRow.id,
+            course_id: courseId,
             assignment_group_id: groupId,
             name: a.name,
             points_possible: a.max,
             due_at: a.due ? new Date(a.due) : null
           });
+          const assignmentId = pickId(assignmentRow, ["assignment_id", "id"]);
 
           const flags = mapStatus(a.status);
 
           // 7. SUBMISSIONS
           await insertRow("submissions", {
-            assignment_id: assignmentRow.id,
-            student_user_id: userRow.id,
+            assignment_id: assignmentId,
+            student_user_id: userId,
             score: a.pts,
             grade:
               a.pts != null && a.max != null
@@ -137,4 +189,7 @@ async function importGrades() {
 }
 
 // Run importer
-importGrades();
+importGrades().catch(err => {
+  console.error("\n❌ Import failed:", err.message ?? err);
+  process.exit(1);
+});

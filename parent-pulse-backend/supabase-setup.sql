@@ -4,6 +4,25 @@
 -- Enable Row Level Security (RLS) for all tables
 -- This ensures data security and proper access control
 
+-- Create sequences before tables reference them in DEFAULT nextval(...)
+CREATE SEQUENCE IF NOT EXISTS accounts_account_id_seq;
+CREATE SEQUENCE IF NOT EXISTS terms_term_id_seq;
+CREATE SEQUENCE IF NOT EXISTS users_user_id_seq;
+CREATE SEQUENCE IF NOT EXISTS courses_course_id_seq;
+CREATE SEQUENCE IF NOT EXISTS sections_section_id_seq;
+CREATE SEQUENCE IF NOT EXISTS assignment_groups_assignment_group_id_seq;
+CREATE SEQUENCE IF NOT EXISTS assignments_assignment_id_seq;
+CREATE SEQUENCE IF NOT EXISTS enrollments_enrollment_id_seq;
+CREATE SEQUENCE IF NOT EXISTS submissions_submission_id_seq;
+CREATE SEQUENCE IF NOT EXISTS grading_periods_grading_period_id_seq;
+CREATE SEQUENCE IF NOT EXISTS daily_entries_entry_id_seq;
+CREATE SEQUENCE IF NOT EXISTS subjects_subject_id_seq;
+CREATE SEQUENCE IF NOT EXISTS subject_teachers_subject_teacher_id_seq;
+CREATE SEQUENCE IF NOT EXISTS upcoming_dates_upcoming_date_id_seq;
+CREATE SEQUENCE IF NOT EXISTS exam_schedule_exam_schedule_id_seq;
+CREATE SEQUENCE IF NOT EXISTS import_batches_import_batch_id_seq;
+CREATE SEQUENCE IF NOT EXISTS raw_grade_imports_raw_import_id_seq;
+
 -- ============================================
 -- ACCOUNTS TABLE
 -- ============================================
@@ -205,6 +224,68 @@ CREATE TABLE IF NOT EXISTS public.observer_links (
 ALTER TABLE public.observer_links ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
+-- DAILY LOG TABLES
+-- ============================================
+CREATE TABLE IF NOT EXISTS public.daily_entries (
+  entry_id bigint NOT NULL DEFAULT nextval('daily_entries_entry_id_seq'::regclass),
+  date date,
+  day text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT daily_entries_pkey PRIMARY KEY (entry_id)
+);
+
+ALTER TABLE public.daily_entries ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.subjects (
+  subject_id bigint NOT NULL DEFAULT nextval('subjects_subject_id_seq'::regclass),
+  entry_id bigint NOT NULL,
+  subject_name text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT subjects_pkey PRIMARY KEY (subject_id),
+  CONSTRAINT subjects_entry_id_fkey FOREIGN KEY (entry_id) REFERENCES public.daily_entries(entry_id)
+);
+
+ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.subject_teachers (
+  subject_teacher_id bigint NOT NULL DEFAULT nextval('subject_teachers_subject_teacher_id_seq'::regclass),
+  subject_id bigint NOT NULL,
+  teacher_name text,
+  today text,
+  homework text,
+  upcoming text,
+  other text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT subject_teachers_pkey PRIMARY KEY (subject_teacher_id),
+  CONSTRAINT subject_teachers_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(subject_id)
+);
+
+ALTER TABLE public.subject_teachers ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.upcoming_dates (
+  upcoming_date_id bigint NOT NULL DEFAULT nextval('upcoming_dates_upcoming_date_id_seq'::regclass),
+  entry_id bigint NOT NULL,
+  description text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT upcoming_dates_pkey PRIMARY KEY (upcoming_date_id),
+  CONSTRAINT upcoming_dates_entry_id_fkey FOREIGN KEY (entry_id) REFERENCES public.daily_entries(entry_id)
+);
+
+ALTER TABLE public.upcoming_dates ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.exam_schedule (
+  exam_schedule_id bigint NOT NULL DEFAULT nextval('exam_schedule_exam_schedule_id_seq'::regclass),
+  entry_id bigint NOT NULL,
+  exam_date date,
+  subject text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT exam_schedule_pkey PRIMARY KEY (exam_schedule_id),
+  CONSTRAINT exam_schedule_entry_id_fkey FOREIGN KEY (entry_id) REFERENCES public.daily_entries(entry_id)
+);
+
+ALTER TABLE public.exam_schedule ENABLE ROW LEVEL SECURITY;
+
+-- ============================================
 -- IMPORT TABLES (for grade imports)
 -- ============================================
 CREATE TABLE IF NOT EXISTS public.import_batches (
@@ -246,52 +327,64 @@ CREATE TABLE IF NOT EXISTS public.raw_grade_imports (
 ALTER TABLE public.raw_grade_imports ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- CREATE SEQUENCES (if not already created)
--- ============================================
-CREATE SEQUENCE IF NOT EXISTS accounts_account_id_seq;
-CREATE SEQUENCE IF NOT EXISTS terms_term_id_seq;
-CREATE SEQUENCE IF NOT EXISTS users_user_id_seq;
-CREATE SEQUENCE IF NOT EXISTS courses_course_id_seq;
-CREATE SEQUENCE IF NOT EXISTS sections_section_id_seq;
-CREATE SEQUENCE IF NOT EXISTS assignment_groups_assignment_group_id_seq;
-CREATE SEQUENCE IF NOT EXISTS assignments_assignment_id_seq;
-CREATE SEQUENCE IF NOT EXISTS enrollments_enrollment_id_seq;
-CREATE SEQUENCE IF NOT EXISTS submissions_submission_id_seq;
-CREATE SEQUENCE IF NOT EXISTS grading_periods_grading_period_id_seq;
-CREATE SEQUENCE IF NOT EXISTS import_batches_import_batch_id_seq;
-CREATE SEQUENCE IF NOT EXISTS raw_grade_imports_raw_import_id_seq;
-
--- ============================================
 -- BASIC RLS POLICIES (Allow authenticated users to read)
 -- ============================================
 -- Note: You'll want to customize these policies based on your security requirements
 
 -- Allow authenticated users to read accounts
+DROP POLICY IF EXISTS "Allow authenticated users to read accounts" ON public.accounts;
 CREATE POLICY "Allow authenticated users to read accounts" ON public.accounts
   FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Allow authenticated users to read users
+DROP POLICY IF EXISTS "Allow authenticated users to read users" ON public.users;
 CREATE POLICY "Allow authenticated users to read users" ON public.users
   FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Allow authenticated users to read courses
+DROP POLICY IF EXISTS "Allow authenticated users to read courses" ON public.courses;
 CREATE POLICY "Allow authenticated users to read courses" ON public.courses
   FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Allow authenticated users to read enrollments
+DROP POLICY IF EXISTS "Allow authenticated users to read enrollments" ON public.enrollments;
 CREATE POLICY "Allow authenticated users to read enrollments" ON public.enrollments
   FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Allow authenticated users to read assignments
+DROP POLICY IF EXISTS "Allow authenticated users to read assignments" ON public.assignments;
 CREATE POLICY "Allow authenticated users to read assignments" ON public.assignments
   FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Allow authenticated users to read submissions
+DROP POLICY IF EXISTS "Allow authenticated users to read submissions" ON public.submissions;
 CREATE POLICY "Allow authenticated users to read submissions" ON public.submissions
   FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Allow authenticated users to read grading periods (term grades)
+DROP POLICY IF EXISTS "Allow authenticated users to read grading periods" ON public.grading_periods;
 CREATE POLICY "Allow authenticated users to read grading periods" ON public.grading_periods
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Allow authenticated users to read daily entries
+DROP POLICY IF EXISTS "Allow authenticated users to read daily entries" ON public.daily_entries;
+CREATE POLICY "Allow authenticated users to read daily entries" ON public.daily_entries
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Allow authenticated users to read subjects" ON public.subjects;
+CREATE POLICY "Allow authenticated users to read subjects" ON public.subjects
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Allow authenticated users to read subject teachers" ON public.subject_teachers;
+CREATE POLICY "Allow authenticated users to read subject teachers" ON public.subject_teachers
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Allow authenticated users to read upcoming dates" ON public.upcoming_dates;
+CREATE POLICY "Allow authenticated users to read upcoming dates" ON public.upcoming_dates
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Allow authenticated users to read exam schedule" ON public.exam_schedule;
+CREATE POLICY "Allow authenticated users to read exam schedule" ON public.exam_schedule
   FOR SELECT USING (auth.role() = 'authenticated');
 
 -- ============================================
