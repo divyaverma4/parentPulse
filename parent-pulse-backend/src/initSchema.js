@@ -1,12 +1,52 @@
 import { supabase } from "./supabaseClient.js";
 
+async function canUseExecSql() {
+  if (!supabase || typeof supabase.rpc !== "function") {
+    return false;
+  }
+
+  try {
+    const { error } = await supabase.rpc("exec_sql", { sql: "SELECT 1" });
+    if (error) {
+      const msg = (error.message || "").toLowerCase();
+      if (msg.includes("exec_sql") || msg.includes("function") || msg.includes("schema cache")) {
+        return false;
+      }
+    }
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
 async function runSQL(sql) {
+  if (!supabase || typeof supabase.rpc !== "function") {
+    console.warn("⚠ Supabase client is not configured; skipping SQL setup.");
+    return false;
+  }
+
   const { error } = await supabase.rpc("exec_sql", { sql });
-  if (error) console.error("SQL Error:", error);
+  if (error) {
+    console.warn("⚠ SQL setup not available in this Supabase project; skipping schema creation.");
+    return false;
+  }
+
+  return true;
 }
 
 export async function initSchema() {
   console.log("🔧 Ensuring tables exist...");
+
+  if (!supabase) {
+    console.warn("⚠ Supabase is not configured. Skipping schema initialization.");
+    return false;
+  }
+
+  const sqlAllowed = await canUseExecSql();
+  if (!sqlAllowed) {
+    console.warn("⚠ exec_sql RPC is unavailable in this project. Skipping automatic schema creation.");
+    return false;
+  }
 
   await runSQL(`
     CREATE TABLE IF NOT EXISTS accounts (
@@ -133,6 +173,24 @@ export async function initSchema() {
       exam_date date,
       subject text
     );
+  `);
+
+  await runSQL(`
+    TRUNCATE TABLE
+      submissions,
+      enrollments,
+      grading_periods,
+      assignments,
+      assignment_groups,
+      courses,
+      subject_teachers,
+      subjects,
+      upcoming_dates,
+      exam_schedule,
+      daily_entries,
+      users,
+      accounts
+    RESTART IDENTITY CASCADE;
   `);
 
   console.log("✅ Schema ready");

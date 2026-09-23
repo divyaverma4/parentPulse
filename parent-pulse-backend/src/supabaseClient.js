@@ -4,7 +4,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+
+if (process.env.SUPABASE_URL && !process.env.SUPABASE_SECRET_KEY) {
+  console.warn('⚠ Add SUPABASE_SECRET_KEY to .env for imports and trusted server operations.');
+}
 
 export const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)

@@ -63,7 +63,7 @@ function normalizeStatus(value?: string): Status {
 
 function normalizeCourseName(raw: string) {
 	const value = String(raw || '').toLowerCase();
-	if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Pre-Algebra';
+	if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Algebra 1';
 	if (/(english|language arts|ela|reading)/.test(value)) return 'English Language Arts';
 	if (/(religion|theology|faith)/.test(value)) return 'Religion';
 	if (/(science|biology|chemistry|physics)/.test(value)) return 'Science';
@@ -162,8 +162,12 @@ function deriveFallbackParamsFromGrades(allGrades: any[]): ChatParams | null {
 	const top = ranked[0];
 	if (!top) return null;
 
+	const hasGrade = top.avg !== null;
+
 	const status: Status =
-		top.missing > 0 || top.avg < 80
+		!hasGrade
+			? 'On Track'
+			: top.missing > 0 || top.avg < 80
 			? 'Action Recommended'
 			: top.issues.length >= 2 || top.avg < 90
 			? 'Needs Attention'

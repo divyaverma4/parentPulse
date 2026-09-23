@@ -75,7 +75,7 @@ const STATUS_STYLES: Record<Status, { dot: string; chipBg: string; chipText: str
 
 const SUBJECT_ORDER = [
   'English Language Arts',
-  'Pre-Algebra',
+  'Algebra 1',
   'Religion',
   'Science',
   'Social Studies',
@@ -88,7 +88,7 @@ const SAMIR_STUDENT_ID = '1';
 
 function normalizeCourseName(raw: string) {
   const value = String(raw || '').toLowerCase();
-  if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Pre-Algebra';
+  if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Algebra 1';
   if (/(english|language arts|ela|reading)/.test(value)) return 'English Language Arts';
   if (/(religion|theology|faith)/.test(value)) return 'Religion';
   if (/(science|biology|chemistry|physics)/.test(value)) return 'Science';
@@ -346,9 +346,11 @@ function summarizeData(
     const dedupedIssues = summarizeIssueList(bucket.lowIssues);
 
     let status: Status = 'On Track';
-    if (bucket.missingCount > 0 || (avgGrade !== null && avgGrade < 80)) {
+    if (avgGrade === null) {
+      status = 'On Track';
+    } else if (bucket.missingCount > 0 || avgGrade < 80) {
       status = 'Action Recommended';
-    } else if (dedupedIssues.length >= 2 || (avgGrade !== null && avgGrade < 90)) {
+    } else if (dedupedIssues.length >= 2 || avgGrade < 90) {
       status = 'Needs Attention';
     }
 

@@ -55,7 +55,7 @@ type BackendReport = {
 
 const SUBJECT_ORDER = [
   'English Language Arts',
-  'Pre-Algebra',
+  'Algebra 1',
   'Religion',
   'Science',
   'Social Studies',
@@ -72,7 +72,7 @@ const STATUS_STYLES: Record<Status, { dot: string; chipBg: string; chipText: str
 
 function normalizeCourseName(raw: string) {
   const value = String(raw || '').toLowerCase();
-  if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Pre-Algebra';
+  if (/(pre[- ]?algebra|algebra|alg\b)/.test(value)) return 'Algebra 1';
   if (/(english|language arts|ela|reading)/.test(value)) return 'English Language Arts';
   if (/(religion|theology|faith)/.test(value)) return 'Religion';
   if (/(science|biology|chemistry|physics)/.test(value)) return 'Science';
@@ -227,7 +227,7 @@ function shuffleQuestions(questions: QuizQuestion[]): QuizQuestion[] {
 
 const SUBJECT_QUIZZES: SubjectQuizTemplate[] = [
   {
-    subject: 'Pre-Algebra',
+    subject: 'Algebra 1',
     questions: [
       {
         id: 'alg-1',
@@ -516,9 +516,11 @@ export default function TestPrepScreen() {
               : null;
 
           let status: Status = 'On Track';
-          if (bucket.missingCount > 0 || (avgGrade !== null && avgGrade < 80)) {
+          if (avgGrade === null) {
+            status = 'On Track';
+          } else if (bucket.missingCount > 0 || avgGrade < 80) {
             status = 'Action Recommended';
-          } else if (avgGrade !== null && avgGrade < 90) {
+          } else if (avgGrade < 90) {
             status = 'Needs Attention';
           }
 
