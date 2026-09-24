@@ -1,11 +1,11 @@
 {
   "student": "Samir",
-  "scrapedAt": "2026-09-23T17:00:24.541Z",
+  "scrapedAt": "2026-09-24T18:18:11.376Z",
   "classes": {
     "Algebra I Honors (08 ALG I H-8-A.17.4-M)": {
       "terms": {
         "T1": {
-          "termGrade": 80.71,
+          "termGrade": 81.51,
           "letterGrade": "B",
           "pointsSummary": null,
           "assignments": [
@@ -56,6 +56,19 @@
               "avg": 100,
               "status": "Valid",
               "due": "09/18",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": null,
+              "name": "Variables on Both Sides Exit ticket",
+              "pts": 6,
+              "max": 6,
+              "avg": 100,
+              "status": "Valid",
+              "due": "09/24",
               "curve": 0,
               "bonus": 0,
               "penalty": 0,
@@ -159,7 +172,7 @@
     "English Language Arts (08 ELA-8A)": {
       "terms": {
         "T1": {
-          "termGrade": 93.67,
+          "termGrade": 94.19,
           "letterGrade": "A",
           "pointsSummary": null,
           "assignments": [
@@ -236,6 +249,19 @@
               "avg": 50,
               "status": "Valid",
               "due": "09/11",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": null,
+              "name": "Humphreys - VW 2 Classwork Assessment",
+              "pts": 10,
+              "max": 10,
+              "avg": 100,
+              "status": "Valid",
+              "due": "09/24",
               "curve": 0,
               "bonus": 0,
               "penalty": 0,

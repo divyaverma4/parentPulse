@@ -1,11 +1,11 @@
 {
   "student": "Nikhil",
-  "scrapedAt": "2026-09-23T17:00:31.420Z",
+  "scrapedAt": "2026-09-24T18:18:19.090Z",
   "classes": {
     "Algebra I Honors (08 ALG I H-8-A.17.4-M)": {
       "terms": {
         "T1": {
-          "termGrade": 92.65,
+          "termGrade": 93.19,
           "letterGrade": "A",
           "pointsSummary": null,
           "assignments": [
@@ -82,6 +82,19 @@
               "avg": 100,
               "status": "Valid",
               "due": "09/11",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": null,
+              "name": "Humphreys - VW 2 Classwork Assessment",
+              "pts": 10,
+              "max": 10,
+              "avg": 100,
+              "status": "Valid",
+              "due": "09/24",
               "curve": 0,
               "bonus": 0,
               "penalty": 0,
@@ -187,7 +200,7 @@
     "Music (06 MUSIC-W1A)": {
       "terms": {
         "T1": {
-          "termGrade": 90.06,
+          "termGrade": 90.36,
           "letterGrade": "A",
           "pointsSummary": null,
           "assignments": [
@@ -251,6 +264,19 @@
               "avg": 83.3,
               "status": "Valid",
               "due": "09/10",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": null,
+              "name": "IXL Arena Work",
+              "pts": 5,
+              "max": 5,
+              "avg": 100,
+              "status": "Valid",
+              "due": "09/24",
               "curve": 0,
               "bonus": 0,
               "penalty": 0,
@@ -788,7 +814,7 @@
     "World Language (08 WLD LANG-8A)": {
       "terms": {
         "T1": {
-          "termGrade": 83.22,
+          "termGrade": 84.76,
           "letterGrade": "B",
           "pointsSummary": null,
           "assignments": [
@@ -852,6 +878,19 @@
               "avg": null,
               "status": "Absent",
               "due": "09/22",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": null,
+              "name": "Reading: Reading comprehension Vamos chapter 5 Paragraph 1 & 2",
+              "pts": 19.2,
+              "max": 20,
+              "avg": 96,
+              "status": "Valid",
+              "due": "09/23",
               "curve": 0,
               "bonus": 0,
               "penalty": 0,
