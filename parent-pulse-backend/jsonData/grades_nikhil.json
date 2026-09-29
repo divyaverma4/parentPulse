@@ -1,11 +1,11 @@
 {
   "student": "Nikhil",
-  "scrapedAt": "2026-09-24T18:18:19.090Z",
+  "scrapedAt": "2026-09-29T01:08:52.624Z",
   "classes": {
     "Algebra I Honors (08 ALG I H-8-A.17.4-M)": {
       "terms": {
         "T1": {
-          "termGrade": 93.19,
+          "termGrade": 93.81,
           "letterGrade": "A",
           "pointsSummary": null,
           "assignments": [
@@ -101,6 +101,19 @@
               "note": null
             },
             {
+              "category": null,
+              "name": "IXL Lessons 9/21-9/25",
+              "pts": 9,
+              "max": 10,
+              "avg": 90,
+              "status": "Valid",
+              "due": "09/25",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
               "category": "Quizzes",
               "name": "O'Hannigan - AR August",
               "pts": 20.2,
@@ -134,6 +147,19 @@
               "avg": 90,
               "status": "Valid",
               "due": "09/08",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": "Quizzes",
+              "name": "Humphreys - VW2 Quiz",
+              "pts": 20,
+              "max": 20,
+              "avg": 100,
+              "status": "Valid",
+              "due": "09/25",
               "curve": 0,
               "bonus": 0,
               "penalty": 0,
@@ -200,7 +226,7 @@
     "Music (06 MUSIC-W1A)": {
       "terms": {
         "T1": {
-          "termGrade": 90.36,
+          "termGrade": 90.72,
           "letterGrade": "A",
           "pointsSummary": null,
           "assignments": [
@@ -368,6 +394,32 @@
               "avg": 100,
               "status": "Valid",
               "due": "09/21",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": "Quizzes",
+              "name": "One step equations",
+              "pts": 16,
+              "max": 18,
+              "avg": 88.9,
+              "status": "Valid",
+              "due": "09/25",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": "Quizzes",
+              "name": "Weekly IXL",
+              "pts": 10,
+              "max": 10,
+              "avg": 100,
+              "status": "Valid",
+              "due": "09/27",
               "curve": 0,
               "bonus": 0,
               "penalty": 0,
@@ -649,7 +701,7 @@
     "Science (08 SCI-8-3)": {
       "terms": {
         "T1": {
-          "termGrade": 93.63,
+          "termGrade": 94.67,
           "letterGrade": "A",
           "pointsSummary": null,
           "assignments": [
@@ -713,6 +765,32 @@
               "avg": 100,
               "status": "Valid",
               "due": "09/10",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": null,
+              "name": "End of French and Indian War",
+              "pts": 10,
+              "max": 10,
+              "avg": 100,
+              "status": "Valid",
+              "due": "09/22",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": null,
+              "name": "Proclamation Perspectives",
+              "pts": 10,
+              "max": 10,
+              "avg": 100,
+              "status": "Valid",
+              "due": "09/24",
               "curve": 0,
               "bonus": 0,
               "penalty": 0,
