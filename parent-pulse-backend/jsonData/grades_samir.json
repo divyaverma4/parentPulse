@@ -1,11 +1,11 @@
 {
   "student": "Samir",
-  "scrapedAt": "2026-09-24T18:18:11.376Z",
+  "scrapedAt": "2026-09-29T01:08:46.563Z",
   "classes": {
     "Algebra I Honors (08 ALG I H-8-A.17.4-M)": {
       "terms": {
         "T1": {
-          "termGrade": 81.51,
+          "termGrade": 80.13,
           "letterGrade": "B",
           "pointsSummary": null,
           "assignments": [
@@ -153,6 +153,19 @@
               "note": null
             },
             {
+              "category": "Quizzes",
+              "name": "Weekly IXL",
+              "pts": 6,
+              "max": 10,
+              "avg": 60,
+              "status": "Valid",
+              "due": "09/27",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
               "category": "Tests",
               "name": "Chapter 1 Test",
               "pts": 24,
@@ -172,7 +185,7 @@
     "English Language Arts (08 ELA-8A)": {
       "terms": {
         "T1": {
-          "termGrade": 94.19,
+          "termGrade": 90.7,
           "letterGrade": "A",
           "pointsSummary": null,
           "assignments": [
@@ -268,6 +281,19 @@
               "note": null
             },
             {
+              "category": null,
+              "name": "IXL Lessons 9/21-9/25",
+              "pts": 5,
+              "max": 10,
+              "avg": 50,
+              "status": "Valid",
+              "due": "09/25",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
               "category": "Quizzes",
               "name": "O'Hannigan - AR August",
               "pts": 28,
@@ -288,6 +314,19 @@
               "avg": 95,
               "status": "Valid",
               "due": "09/03",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": "Quizzes",
+              "name": "Humphreys - VW2 Quiz",
+              "pts": 18,
+              "max": 20,
+              "avg": 90,
+              "status": "Valid",
+              "due": "09/25",
               "curve": 0,
               "bonus": 0,
               "penalty": 0,
@@ -725,8 +764,8 @@
     "Social Studies (08 SS-8A)": {
       "terms": {
         "T1": {
-          "termGrade": 88.7,
-          "letterGrade": "B",
+          "termGrade": 90,
+          "letterGrade": "A",
           "pointsSummary": null,
           "assignments": [
             {
@@ -802,6 +841,32 @@
               "avg": null,
               "status": "Missing",
               "due": "09/09",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": null,
+              "name": "How The Other Half Lives",
+              "pts": 10,
+              "max": 10,
+              "avg": 100,
+              "status": "Valid",
+              "due": "09/22",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": "Projects",
+              "name": "The Jungle",
+              "pts": 23,
+              "max": 25,
+              "avg": 92,
+              "status": "Valid",
+              "due": "09/23",
               "curve": 0,
               "bonus": 0,
               "penalty": 0,
@@ -891,6 +956,19 @@
               "avg": 100,
               "status": "Valid",
               "due": "09/23",
+              "curve": 0,
+              "bonus": 0,
+              "penalty": 0,
+              "note": null
+            },
+            {
+              "category": null,
+              "name": "Schedules2: Leegando a la escuela",
+              "pts": null,
+              "max": null,
+              "avg": null,
+              "status": "Absent",
+              "due": "09/28",
               "curve": 0,
               "bonus": 0,
               "penalty": 0,
