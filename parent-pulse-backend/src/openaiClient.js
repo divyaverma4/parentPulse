@@ -117,7 +117,7 @@ When a user asks about their "average grade", "GPA", "overall grade", or similar
 For example:
 [API_CALL:AVERAGE_GRADE] Based on your current grades, your average GPA is calculated as follows...
 
-For all other questions, provide a normal response based on the context provided. Be concise and accurate.`;
+For all other questions, answer only from the provided context. Never invent assignment names, scores, statuses, due dates, or missing work. Only call an assignment missing, late, or low-scoring when the context explicitly supports that label. If the context does not contain enough information, say so. Be concise and accurate.`;
 
     const messages = [
       {

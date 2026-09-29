@@ -4,6 +4,29 @@ import { askQuestion, getStudentInsights } from '../chatbot.js';
 
 const router = express.Router();
 
+router.get('/student', async (req, res) => {
+  try {
+    const fullName = String(req.query.name || '').trim();
+    if (!fullName) {
+      return res.status(400).json({ error: 'Student name is required' });
+    }
+
+    const { findLatestStudentByName } = await import('../supabaseClient.js');
+    const student = await findLatestStudentByName(fullName);
+    if (!student) {
+      return res.status(404).json({ error: `Student not found: ${fullName}` });
+    }
+
+    res.json({ studentUserId: student.user_id, fullName: student.full_name });
+  } catch (error) {
+    console.error('Error resolving student:', error);
+    res.status(500).json({
+      error: 'Failed to resolve student',
+      message: error?.message || 'Internal server error',
+    });
+  }
+});
+
 /**
  * POST /api/chat/ask
  * Handles BOTH:
