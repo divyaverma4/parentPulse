@@ -14,6 +14,22 @@ export const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
+export async function findLatestStudentByName(fullName) {
+  if (!supabase) throw new Error('Supabase is not configured');
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('user_id, full_name')
+    .eq('user_type', 'student')
+    .ilike('full_name', fullName.trim())
+    .order('user_id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 /**
  * Get student's current grades and submission summary
  */

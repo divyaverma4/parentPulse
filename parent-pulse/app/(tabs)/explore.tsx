@@ -74,6 +74,16 @@ function normalizeCourseName(raw: string) {
 	return '';
 }
 
+function isRecentDueDate(value: unknown) {
+	if (!value) return false;
+	const dueDate = new Date(String(value));
+	if (Number.isNaN(dueDate.getTime())) return false;
+	const now = new Date();
+	const cutoff = new Date(now);
+	cutoff.setDate(cutoff.getDate() - 30);
+	return dueDate >= cutoff && dueDate <= now;
+}
+
 function deriveAssessmentFromParams(params: ChatParams): Assessment {
 	const status = normalizeStatus(params.status);
 	const subject = params.subject || 'General';
@@ -141,10 +151,10 @@ function deriveFallbackParamsFromGrades(allGrades: any[]): ChatParams | null {
 			continue;
 		}
 
-		if (!excused && Number.isFinite(score) && Number.isFinite(max) && max > 0) {
+		if (!excused && grade?.score != null && Number.isFinite(score) && Number.isFinite(max) && max > 0) {
 			const pct = (score / max) * 100;
 			buckets[subject].scores.push(pct);
-			if (pct < 75) {
+			if (pct < 75 && isRecentDueDate(grade?.assignments?.due_at)) {
 				buckets[subject].issues.push(`${assignmentName}: ${Math.round(pct)}%`);
 			}
 		}
@@ -223,16 +233,38 @@ export default function ExploreChatScreen() {
 	const { isDark, toggleTheme } = useAppTheme();
 	const [fallbackParams, setFallbackParams] = useState<ChatParams | null>(null);
 	const [dynamicIssues, setDynamicIssues] = useState<string[]>([]);
+	const [resolvedStudentId, setResolvedStudentId] = useState('');
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [input, setInput] = useState('');
 	const [sending, setSending] = useState(false);
 	const [typing, setTyping] = useState(false);
 
 	const expoExtra = (Constants.expoConfig?.extra as any) || {};
-	const studentId = String(params.studentId || '1');
+	const studentId = String(params.studentId || resolvedStudentId);
 	const provided = expoExtra.apiBaseUrl;
 	const defaultHost = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
 	const apiBaseUrl = provided || defaultHost;
+
+	useEffect(() => {
+		if (params.studentId) return;
+
+		let active = true;
+		fetch(`${apiBaseUrl}/api/chat/student?name=Samir`)
+			.then(async (res) => {
+				if (!res.ok) throw new Error('Student lookup failed');
+				return res.json();
+			})
+			.then((student) => {
+				if (active) setResolvedStudentId(String(student.studentUserId || ''));
+			})
+			.catch(() => {
+				if (active) setResolvedStudentId('');
+			});
+
+		return () => {
+			active = false;
+		};
+	}, [apiBaseUrl, params.studentId]);
 
 	const hasRouteContext = Boolean(params.title || params.subject || params.status || params.why);
 
@@ -240,6 +272,7 @@ export default function ExploreChatScreen() {
 		let active = true;
 
 		const loadFallback = async () => {
+			if (!studentId) return;
 			if (hasRouteContext) {
 				if (active) setFallbackParams(null);
 				return;
@@ -304,9 +337,11 @@ export default function ExploreChatScreen() {
 						continue;
 					}
 
-					if (!excused && Number.isFinite(score) && Number.isFinite(max) && max > 0) {
+					if (!excused && grade?.score != null && Number.isFinite(score) && Number.isFinite(max) && max > 0) {
 						const pct = (score / max) * 100;
-						if (pct < 75) issues.push(`${assignmentName}: ${Math.round(pct)}%`);
+						if (pct < 75 && isRecentDueDate(grade?.assignments?.due_at)) {
+							issues.push(`${assignmentName}: ${Math.round(pct)}%`);
+						}
 					}
 				}
 
@@ -329,7 +364,11 @@ export default function ExploreChatScreen() {
 		});
 	}, [assessment.title]);
 
-	const resolvedIssues = dynamicIssues.length > 0 ? dynamicIssues : assessment.issues;
+	const resolvedIssues = hasRouteContext
+		? assessment.issues
+		: dynamicIssues.length > 0
+			? dynamicIssues
+			: assessment.issues;
 
 	const palette = {
 		screenBg: isDark ? '#020617' : '#f4f6ff',
@@ -350,6 +389,11 @@ export default function ExploreChatScreen() {
 	};
 
 	const askApi = async (question: string) => {
+		if (!studentId || !Number.isFinite(Number(studentId))) {
+			addMessage('error', "Could not resolve Samir's student record. Check the backend student lookup.");
+			return;
+		}
+
 		const prompt = buildPrompt(assessment, question, resolvedIssues);
 		const endpoint = `${apiBaseUrl}/api/chat/ask`;
 		const controller = new AbortController();

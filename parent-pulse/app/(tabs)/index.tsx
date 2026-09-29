@@ -59,6 +59,7 @@ type BackendReport = {
   } | null;
   gradesSamir?: {
     student?: string;
+    scrapedAt?: string;
     classes?: Record<string, any>;
   } | null;
 };
@@ -84,7 +85,7 @@ const SUBJECT_ORDER = [
   'Art',
 ];
 
-const SAMIR_STUDENT_ID = '1';
+const SAMIR_NAME = 'Samir';
 
 function normalizeCourseName(raw: string) {
   const value = String(raw || '').toLowerCase();
@@ -147,16 +148,56 @@ function signalFromReport(reportSubject: any): ContextSignal {
   return 'No Events';
 }
 
-function extractIssues(assignments: any[]) {
-  return (assignments || [])
-    .filter(
-      (a) =>
-        typeof a?.pts === 'number' &&
-        typeof a?.max === 'number' &&
-        a.max > 0 &&
-        (a.pts / a.max) * 100 < 75
-    )
-    .map((a) => `${a.name}: ${Math.round((a.pts / a.max) * 100)}%`);
+function parseReportDueDate(value: unknown, referenceDate: Date): Date | null {
+  const text = String(value || '').trim();
+  const monthDay = text.match(/^(\d{1,2})\/(\d{1,2})$/);
+  if (monthDay) {
+    let year = referenceDate.getFullYear();
+    let dueDate = new Date(year, Number(monthDay[1]) - 1, Number(monthDay[2]));
+    if (dueDate.getTime() - referenceDate.getTime() > 180 * 24 * 60 * 60 * 1000) {
+      year -= 1;
+      dueDate = new Date(year, Number(monthDay[1]) - 1, Number(monthDay[2]));
+    }
+    return Number.isNaN(dueDate.getTime()) ? null : dueDate;
+  }
+
+  const dueDate = new Date(text);
+  return text && !Number.isNaN(dueDate.getTime()) ? dueDate : null;
+}
+
+function extractIssues(assignments: any[], referenceDate: Date) {
+  const referenceDay = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate()
+  );
+  const recentCutoff = new Date(referenceDay);
+  recentCutoff.setDate(recentCutoff.getDate() - 30);
+
+  return (assignments || []).flatMap((assignment) => {
+    const status = String(assignment?.status || '').toLowerCase();
+    const name = assignment?.name || 'Assignment';
+    if (status === 'missing') return [`${name}: Missing`];
+    if (status === 'absent' || status === 'excused') return [];
+    if (assignment?.pts == null || assignment?.max == null) return [];
+
+    const score = Number(assignment?.pts);
+    const max = Number(assignment?.max);
+    const dueDate = parseReportDueDate(assignment?.due, referenceDate);
+    if (
+      !Number.isFinite(score) ||
+      !Number.isFinite(max) ||
+      max <= 0 ||
+      !dueDate ||
+      dueDate < recentCutoff ||
+      dueDate > referenceDay
+    ) {
+      return [];
+    }
+
+    const percentage = (score / max) * 100;
+    return percentage < 75 ? [`${name}: ${Math.round(percentage)}%`] : [];
+  });
 }
 
 function summarizeIssueList(issues: string[]) {
@@ -165,9 +206,9 @@ function summarizeIssueList(issues: string[]) {
   return [...deduped.slice(0, 3), `+${deduped.length - 3} more low-scoring assignments`];
 }
 
-function buildSubjectChatParams(subjectItem: SubjectItem) {
+function buildSubjectChatParams(subjectItem: SubjectItem, studentId: string) {
   return {
-    studentId: SAMIR_STUDENT_ID,
+    studentId,
     source: 'home-subject',
     title: `Discuss ${subjectItem.subject}`,
     subject: subjectItem.subject,
@@ -190,9 +231,9 @@ function buildSubjectChatParams(subjectItem: SubjectItem) {
   };
 }
 
-function buildPriorityChatParams(priorityItem: PriorityItem) {
+function buildPriorityChatParams(priorityItem: PriorityItem, studentId: string) {
   return {
-    studentId: SAMIR_STUDENT_ID,
+    studentId,
     source: 'home-priority',
     title: priorityItem.title,
     subject: priorityItem.subject,
@@ -220,6 +261,8 @@ function summarizeData(
   dbGrades: any[]
 ): { subjects: SubjectItem[]; priorities: PriorityItem[] } {
   const classes = data?.gradesSamir?.classes || {};
+  const reportDate = new Date(data?.gradesSamir?.scrapedAt || Date.now());
+  const referenceDate = Number.isNaN(reportDate.getTime()) ? new Date() : reportDate;
   const reportEntry = data?.sampleReport?.entries?.[0] || {};
   const reportSubjects = reportEntry.subjects || {};
 
@@ -256,7 +299,7 @@ function summarizeData(
         subjectBuckets[subject].missingCount += 1;
       }
 
-      if (!missing && !excused && Number.isFinite(score) && Number.isFinite(max) && max > 0) {
+      if (!missing && !excused && grade?.score != null && Number.isFinite(score) && Number.isFinite(max) && max > 0) {
         const pct = (score / max) * 100;
         subjectBuckets[subject].grades.push(pct);
 
@@ -294,12 +337,33 @@ function summarizeData(
         }
 
         const assignments = term?.assignments || [];
-        subjectBuckets[subject].lowIssues.push(...extractIssues(assignments));
+        subjectBuckets[subject].lowIssues.push(...extractIssues(assignments, referenceDate));
         subjectBuckets[subject].missingCount += assignments.filter((a: any) =>
           String(a?.status || '').toLowerCase().includes('missing')
         ).length;
       }
     }
+  }
+
+  for (const [className, classData] of Object.entries(classes)) {
+    const subject = normalizeCourseName(className);
+    if (!subject) continue;
+
+    if (!subjectBuckets[subject]) {
+      subjectBuckets[subject] = {
+        grades: [],
+        lowIssues: [],
+        missingCount: 0,
+        signal: 'No Events',
+      };
+    }
+
+    const assignments = Object.values(classData?.terms || {})
+      .flatMap((term: any) => term?.assignments || []);
+    subjectBuckets[subject].lowIssues = extractIssues(assignments, referenceDate);
+    subjectBuckets[subject].missingCount = assignments.filter(
+      (assignment: any) => String(assignment?.status || '').toLowerCase() === 'missing'
+    ).length;
   }
 
   for (const [name, details] of Object.entries(reportSubjects)) {
@@ -423,6 +487,7 @@ export default function HomeScreen() {
   const [loadError, setLoadError] = useState('');
   const [reportData, setReportData] = useState<BackendReport | null>(null);
   const [dbGrades, setDbGrades] = useState<any[]>([]);
+  const [studentId, setStudentId] = useState('');
 
   const expoExtra = (Constants.expoConfig?.extra as any) || {};
   const provided = expoExtra.apiBaseUrl;
@@ -436,20 +501,28 @@ export default function HomeScreen() {
       setLoading(true);
       setLoadError('');
       try {
-        const [reportResult, averageResult] = await Promise.allSettled([
+        const [reportResult, studentResult] = await Promise.allSettled([
           fetch(`${apiBaseUrl}/api/report/latest`),
-          fetch(`${apiBaseUrl}/api/chat/average/${SAMIR_STUDENT_ID}`),
+          fetch(`${apiBaseUrl}/api/chat/student?name=${encodeURIComponent(SAMIR_NAME)}`),
         ]);
 
         let data: BackendReport | null = null;
         let grades: any[] = [];
+        let resolvedStudentId = '';
 
         if (reportResult.status === 'fulfilled' && reportResult.value.ok) {
           data = (await reportResult.value.json()) as BackendReport;
         }
 
-        if (averageResult.status === 'fulfilled' && averageResult.value.ok) {
-          const avgData = (await averageResult.value.json()) as AverageApiResponse;
+        if (studentResult.status === 'fulfilled' && studentResult.value.ok) {
+          const studentData = await studentResult.value.json();
+          resolvedStudentId = String(studentData.studentUserId || '');
+        }
+
+        if (resolvedStudentId) {
+          const averageResult = await fetch(`${apiBaseUrl}/api/chat/average/${resolvedStudentId}`);
+          if (!averageResult.ok) throw new Error('Failed to load Samir database grades.');
+          const avgData = (await averageResult.json()) as AverageApiResponse;
           grades = avgData.allGrades || [];
         }
 
@@ -460,6 +533,7 @@ export default function HomeScreen() {
         if (active) {
           setReportData(data);
           setDbGrades(grades);
+          setStudentId(resolvedStudentId);
         }
       } catch (err: any) {
         if (active) {
@@ -501,12 +575,12 @@ export default function HomeScreen() {
 
   const openSubjectChat = (item: SubjectItem) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: '/(tabs)/explore', params: buildSubjectChatParams(item) as any });
+    router.push({ pathname: '/(tabs)/explore', params: buildSubjectChatParams(item, studentId) as any });
   };
 
   const openPriorityChat = (item: PriorityItem) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: '/(tabs)/explore', params: buildPriorityChatParams(item) as any });
+    router.push({ pathname: '/(tabs)/explore', params: buildPriorityChatParams(item, studentId) as any });
   };
 
   const toggleThemeWithHaptics = () => {
