@@ -9,10 +9,16 @@
 5. Add environment variables in Railway:
    - `OPENAI_API_KEY`
    - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
+   - `SUPABASE_SECRET_KEY`
    - `NODE_ENV=production`
    - `REPORT_UPLOAD_KEY` (optional)
 6. Deploy the service.
+
+## 1a) Import grade assignments once
+
+Deploying the backend does not import grade JSON into Supabase. From `parent-pulse-backend`, run `npm run import:grades` once with `SUPABASE_URL` and `SUPABASE_SECRET_KEY` set to the intended database. The importer reads grade-export JSON files from `jsonData/`.
+
+Do not add this command to the Railway start command: the web server should not re-import data on every restart. The importer is not idempotent, so rerunning it can create duplicate rows. Schema initialization no longer truncates existing data.
 
 Health checks:
 - `GET /api/health`

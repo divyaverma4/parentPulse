@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
+    "import:grades": "node src/importGrades.js",
     "test": "node --test"
   },
   "keywords": [

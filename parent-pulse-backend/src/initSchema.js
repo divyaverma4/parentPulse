@@ -175,23 +175,5 @@ export async function initSchema() {
     );
   `);
 
-  await runSQL(`
-    TRUNCATE TABLE
-      submissions,
-      enrollments,
-      grading_periods,
-      assignments,
-      assignment_groups,
-      courses,
-      subject_teachers,
-      subjects,
-      upcoming_dates,
-      exam_schedule,
-      daily_entries,
-      users,
-      accounts
-    RESTART IDENTITY CASCADE;
-  `);
-
   console.log("✅ Schema ready");
 }
