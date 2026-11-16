@@ -28,7 +28,7 @@ Question: "${question}"
 Response:`;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4.0-turbo',
       messages: [
         {
           role: 'user',
@@ -75,7 +75,7 @@ Question: ${question}
 Courses: ${JSON.stringify(courseOptions)}`;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4.0-turbo',
       messages: [
         {
           role: 'user',
@@ -133,7 +133,7 @@ For all other questions, answer only from the provided context. Never invent ass
     ];
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4.0-turbo',
       messages: messages,
       max_tokens: 500,
       temperature: 0.7,
